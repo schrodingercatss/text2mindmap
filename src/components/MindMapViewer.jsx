@@ -4,7 +4,7 @@ import { Download } from 'lucide-react';
 import MindMapNode from './MindMapNode';
 import ProcessFlow from './ProcessFlow';
 
-const MindMapViewer = ({ data, processSteps, title }) => {
+const MindMapViewer = ({ data, processSteps, title, isEditing, onDataChange, onTitleChange }) => {
     const mindMapRef = useRef(null);
 
     const handleExport = async () => {
@@ -17,6 +17,14 @@ const MindMapViewer = ({ data, processSteps, title }) => {
             link.download = `${title || 'mindmap'}.png`;
             link.href = canvas.toDataURL('image/png');
             link.click();
+        }
+    };
+
+    const handleUpdateSection = (sectionIndex, updates) => {
+        if (onDataChange) {
+            const newData = [...data];
+            newData[sectionIndex] = { ...newData[sectionIndex], ...updates };
+            onDataChange(newData);
         }
     };
 
@@ -37,7 +45,18 @@ const MindMapViewer = ({ data, processSteps, title }) => {
                     className="bg-white p-12 rounded-3xl shadow-xl border border-slate-100 min-h-[800px]"
                 >
                     {title && (
-                        <h1 className="text-4xl font-extrabold text-slate-900 text-center mb-16 tracking-tight">
+                        <h1
+                            className={`text-4xl font-extrabold text-slate-900 text-center mb-16 tracking-tight ${isEditing ? 'cursor-pointer hover:bg-blue-100 hover:ring-2 hover:ring-blue-300 rounded px-2' : ''}`}
+                            onDoubleClick={() => {
+                                if (isEditing && onTitleChange) {
+                                    const newTitle = prompt('Edit title:', title);
+                                    if (newTitle && newTitle.trim()) {
+                                        onTitleChange(newTitle.trim());
+                                    }
+                                }
+                            }}
+                            title={isEditing ? 'Double-click to edit title' : ''}
+                        >
                             {title}
                         </h1>
                     )}
@@ -53,6 +72,9 @@ const MindMapViewer = ({ data, processSteps, title }) => {
                                 title={section.title}
                                 items={section.items}
                                 isLast={index === data.length - 1}
+                                isEditing={isEditing}
+                                sectionIndex={index}
+                                onUpdateSection={handleUpdateSection}
                             />
                         ))}
                     </div>

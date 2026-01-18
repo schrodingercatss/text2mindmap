@@ -9,6 +9,7 @@ const MindMapDetail = () => {
     const navigate = useNavigate();
     const [mapData, setMapData] = useState(null);
     const [isEditing, setIsEditing] = useState(false);
+    const [editData, setEditData] = useState(null);
     const [editTitle, setEditTitle] = useState('');
     const [saveMessage, setSaveMessage] = useState('');
 
@@ -16,16 +17,24 @@ const MindMapDetail = () => {
         const map = getMindMapById(id);
         if (map) {
             setMapData(map);
+            setEditData(map.data);
             setEditTitle(map.title);
         } else {
             navigate('/');
         }
     }, [id, navigate]);
 
-    const handleSave = () => {
-        if (!editTitle.trim()) return;
+    const handleStartEdit = () => {
+        setEditData([...mapData.data]);
+        setEditTitle(mapData.title);
+        setIsEditing(true);
+    };
 
-        const updated = updateMindMap(id, { title: editTitle.trim() });
+    const handleSave = () => {
+        const updated = updateMindMap(id, {
+            title: editTitle.trim() || mapData.title,
+            data: editData
+        });
         if (updated) {
             setMapData(updated);
             setIsEditing(false);
@@ -35,8 +44,17 @@ const MindMapDetail = () => {
     };
 
     const handleCancelEdit = () => {
+        setEditData(mapData.data);
         setEditTitle(mapData.title);
         setIsEditing(false);
+    };
+
+    const handleDataChange = (newData) => {
+        setEditData(newData);
+    };
+
+    const handleTitleChange = (newTitle) => {
+        setEditTitle(newTitle);
     };
 
     if (!mapData) return null;
@@ -58,7 +76,7 @@ const MindMapDetail = () => {
                         )}
                         {!isEditing ? (
                             <button
-                                onClick={() => setIsEditing(true)}
+                                onClick={handleStartEdit}
                                 className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
                             >
                                 <Edit3 size={16} /> Edit
@@ -83,26 +101,21 @@ const MindMapDetail = () => {
                 </div>
 
                 {isEditing && (
-                    <div className="bg-white rounded-xl p-6 border border-slate-200 mb-6">
-                        <label className="block text-sm font-semibold text-slate-700 mb-2">Edit Title</label>
-                        <input
-                            type="text"
-                            value={editTitle}
-                            onChange={(e) => setEditTitle(e.target.value)}
-                            className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all"
-                            placeholder="Enter mind map title..."
-                        />
-                        <p className="mt-2 text-xs text-slate-400">
-                            Tip: This is the display title for your mind map.
+                    <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
+                        <p className="text-blue-700 text-sm">
+                            <strong>Edit Mode:</strong> Double-click on any text to edit it. Press Enter or click away to confirm. Click Save when finished.
                         </p>
                     </div>
                 )}
             </div>
 
             <MindMapViewer
-                title={mapData.title}
-                data={mapData.data}
+                title={isEditing ? editTitle : mapData.title}
+                data={isEditing ? editData : mapData.data}
                 processSteps={mapData.processSteps}
+                isEditing={isEditing}
+                onDataChange={handleDataChange}
+                onTitleChange={handleTitleChange}
             />
         </div>
     );
