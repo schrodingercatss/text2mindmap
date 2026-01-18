@@ -1,54 +1,44 @@
 import { getApiSettings } from '../utils/storage';
 
-export const generateMindMapFromText = async (text) => {
-    const { apiKey, baseUrl, modelName, systemPrompt } = getApiSettings();
+export const generateMindMapFromText = async (text, fileType = 'txt') => {
+    const { apiKey, baseUrl, modelName, systemPrompt, pdfSystemPrompt } = getApiSettings();
 
     if (!apiKey) {
         throw new Error('API Key is missing. Please configure it in Settings.');
     }
 
-    // Use the system prompt from settings, or fall back to a default if somehow missing (though storage.js handles default)
-    const promptToUse = systemPrompt || `You are an expert at analyzing meeting transcripts and structuring them into a visual mind map and process flow.
-
-Your goal is to extract key topics, discussions, and action items and organize them into a specific JSON structure.
-
-The output must be a JSON object with two keys: "mindMap" and "processFlow".
-
-1. "mindMap": An array where each item represents a main section (Node).
-   - "theme": Choose from 'orange', 'green', 'pink', 'cyan', 'blue'.
-   - "title": The main topic of the section.
-   - "items": An array of objects, each with a "content" field (string). Use "Title: Content" format for specific points.
-
-2. "processFlow": An array of steps representing the timeline or key process discussed.
-   - "title": Short title of the step.
-   - "desc": Brief description.
-   - "color": Hex color code (e.g., #87CEFA, #FFB6C1, #90EE90).
-
-Example JSON:
-{
-  "mindMap": [
-    {
-      "theme": "orange",
-      "title": "Project Goals",
-      "items": [
-        { "content": "Objective 1: Increase efficiency" },
-        { "content": "Owner: John Doe" }
-      ]
-    }
-  ],
-  "processFlow": [
-    { "title": "Kickoff", "desc": "Initial meeting", "color": "#87CEFA" },
-    { "title": "Development", "desc": "Coding phase", "color": "#90EE90" }
-  ]
-}
-
-Analyze the text and return ONLY the raw JSON.`;
+    // Choose the appropriate prompt based on file type
+    const promptToUse = fileType === 'pdf'
+        ? (pdfSystemPrompt || systemPrompt || 'Analyze this document and return a JSON mind map.')
+        : (systemPrompt || 'Analyze this meeting transcript and return a JSON mind map.');
 
     try {
         // Smart URL construction: check if user already included the endpoint
         let url = baseUrl.replace(/\/$/, '');
         if (!url.endsWith('/chat/completions')) {
             url = `${url}/chat/completions`;
+        }
+
+        // Build the message content based on file type
+        let userContent;
+        if (fileType === 'pdf') {
+            // For PDF: text contains base64 data, send as file
+            userContent = [
+                {
+                    type: 'file',
+                    file: {
+                        filename: 'document.pdf',
+                        file_data: `data:application/pdf;base64,${text}`
+                    }
+                },
+                {
+                    type: 'text',
+                    text: 'Please analyze this PDF document and generate a mind map structure.'
+                }
+            ];
+        } else {
+            // For text files: send as plain text
+            userContent = text;
         }
 
         const response = await fetch(url, {
@@ -61,7 +51,7 @@ Analyze the text and return ONLY the raw JSON.`;
                 model: modelName || 'gpt-4o',
                 messages: [
                     { role: 'system', content: promptToUse },
-                    { role: 'user', content: text },
+                    { role: 'user', content: userContent },
                 ],
                 temperature: 0.2,
             }),

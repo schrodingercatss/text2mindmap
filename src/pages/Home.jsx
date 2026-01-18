@@ -19,14 +19,37 @@ const Home = () => {
         const file = event.target.files[0];
         if (!file) return;
 
+        // Check file extension
+        const fileName = file.name.toLowerCase();
+        const isPdf = fileName.endsWith('.pdf');
+        const isTxt = fileName.endsWith('.txt');
+
+        if (!isPdf && !isTxt) {
+            setError('Only .txt and .pdf files are supported.');
+            return;
+        }
+
         setLoading(true);
         setError('');
 
         const reader = new FileReader();
         reader.onload = async (e) => {
-            const text = e.target.result;
             try {
-                const generatedData = await generateMindMapFromText(text);
+                let content;
+                let fileType;
+
+                if (isPdf) {
+                    // For PDF: get base64 data (remove the data URL prefix)
+                    const base64 = e.target.result.split(',')[1];
+                    content = base64;
+                    fileType = 'pdf';
+                } else {
+                    // For TXT: use plain text
+                    content = e.target.result;
+                    fileType = 'txt';
+                }
+
+                const generatedData = await generateMindMapFromText(content, fileType);
                 const { modelName } = getApiSettings();
 
                 // Handle both old (array) and new (object) formats for backward compatibility
@@ -34,10 +57,11 @@ const Home = () => {
                 const processFlowData = Array.isArray(generatedData) ? [] : (generatedData.processFlow || []);
 
                 const newMap = {
-                    title: file.name.replace('.txt', ''),
+                    title: file.name.replace(/\.(txt|pdf)$/i, ''),
                     data: mindMapData,
                     processSteps: processFlowData,
-                    modelName: modelName || 'Unknown Model'
+                    modelName: modelName || 'Unknown Model',
+                    fileType: fileType
                 };
 
                 const savedMap = saveMindMap(newMap);
@@ -49,7 +73,13 @@ const Home = () => {
                 setLoading(false);
             }
         };
-        reader.readAsText(file);
+
+        // Read file based on type
+        if (isPdf) {
+            reader.readAsDataURL(file);
+        } else {
+            reader.readAsText(file);
+        }
     };
 
     const handleDelete = (e, id) => {
@@ -122,11 +152,11 @@ const Home = () => {
                                     <Plus className="text-blue-600" size={32} />
                                 </div>
                                 <p className="text-blue-900 font-bold text-lg">New Mind Map</p>
-                                <p className="text-blue-600/70 text-sm mt-1">Upload .txt transcript</p>
+                                <p className="text-blue-600/70 text-sm mt-1">Upload .txt or .pdf</p>
                                 <input
                                     id="file-upload"
                                     type="file"
-                                    accept=".txt"
+                                    accept=".txt,.pdf"
                                     className="hidden"
                                     onChange={handleFileUpload}
                                 />
