@@ -10,6 +10,7 @@ const MindMapDetail = () => {
     const [mapData, setMapData] = useState(null);
     const [isEditing, setIsEditing] = useState(false);
     const [editData, setEditData] = useState(null);
+    const [editProcessSteps, setEditProcessSteps] = useState([]);
     const [editTitle, setEditTitle] = useState('');
     const [saveMessage, setSaveMessage] = useState('');
 
@@ -19,6 +20,7 @@ const MindMapDetail = () => {
             setMapData(map);
             setEditData(map.data);
             setEditTitle(map.title);
+            setEditProcessSteps(map.processSteps || []);
         } else {
             navigate('/');
         }
@@ -27,13 +29,15 @@ const MindMapDetail = () => {
     const handleStartEdit = () => {
         setEditData([...mapData.data]);
         setEditTitle(mapData.title);
+        setEditProcessSteps([...(mapData.processSteps || [])]);
         setIsEditing(true);
     };
 
     const handleSave = () => {
         const updated = updateMindMap(id, {
             title: editTitle.trim() || mapData.title,
-            data: editData
+            data: editData,
+            processSteps: editProcessSteps
         });
         if (updated) {
             setMapData(updated);
@@ -46,6 +50,7 @@ const MindMapDetail = () => {
     const handleCancelEdit = () => {
         setEditData(mapData.data);
         setEditTitle(mapData.title);
+        setEditProcessSteps(mapData.processSteps || []);
         setIsEditing(false);
     };
 
@@ -55,6 +60,10 @@ const MindMapDetail = () => {
 
     const handleTitleChange = (newTitle) => {
         setEditTitle(newTitle);
+    };
+
+    const handleProcessStepsChange = (newSteps) => {
+        setEditProcessSteps(newSteps);
     };
 
     if (!mapData) return null;
@@ -112,10 +121,11 @@ const MindMapDetail = () => {
             <MindMapViewer
                 title={isEditing ? editTitle : mapData.title}
                 data={isEditing ? editData : mapData.data}
-                processSteps={mapData.processSteps}
+                processSteps={isEditing ? editProcessSteps : mapData.processSteps}
                 isEditing={isEditing}
                 onDataChange={handleDataChange}
                 onTitleChange={handleTitleChange}
+                onProcessStepsChange={handleProcessStepsChange}
             />
         </div>
     );

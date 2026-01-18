@@ -4,7 +4,7 @@ import { Download, Plus } from 'lucide-react';
 import MindMapNode from './MindMapNode';
 import ProcessFlow from './ProcessFlow';
 
-const MindMapViewer = ({ data, processSteps, title, isEditing, onDataChange, onTitleChange }) => {
+const MindMapViewer = ({ data, processSteps, title, isEditing, onDataChange, onTitleChange, onProcessStepsChange }) => {
     const mindMapRef = useRef(null);
 
     const handleExport = async () => {
@@ -140,6 +140,20 @@ const MindMapViewer = ({ data, processSteps, title, isEditing, onDataChange, onT
                             <ProcessFlow
                                 title="Process Flow"
                                 steps={processSteps}
+                                isEditing={isEditing}
+                                onStepsChange={onProcessStepsChange}
+                            />
+                        </div>
+                    )}
+
+                    {/* Add Process Flow if empty but in edit mode */}
+                    {isEditing && (!processSteps || processSteps.length === 0) && (
+                        <div className="mt-20 pt-10 border-t border-slate-100">
+                            <ProcessFlow
+                                title="Process Flow"
+                                steps={[]}
+                                isEditing={isEditing}
+                                onStepsChange={onProcessStepsChange}
                             />
                         </div>
                     )}
