@@ -56,8 +56,13 @@ const Home = () => {
                 const mindMapData = Array.isArray(generatedData) ? generatedData : generatedData.mindMap;
                 const processFlowData = Array.isArray(generatedData) ? [] : (generatedData.processFlow || []);
 
+                // Use extracted title from API, fall back to filename
+                const extractedTitle = generatedData.title;
+                const fallbackTitle = file.name.replace(/\.(txt|pdf)$/i, '');
+                const finalTitle = extractedTitle && extractedTitle.trim() ? extractedTitle.trim() : fallbackTitle;
+
                 const newMap = {
-                    title: file.name.replace(/\.(txt|pdf)$/i, ''),
+                    title: finalTitle,
                     data: mindMapData,
                     processSteps: processFlowData,
                     modelName: modelName || 'Unknown Model',

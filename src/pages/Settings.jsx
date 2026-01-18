@@ -10,6 +10,7 @@ const Settings = () => {
     const [modelName, setModelName] = useState('');
     const [systemPrompt, setSystemPrompt] = useState('');
     const [iconColorPreference, setIconColorPreference] = useState('random');
+    const [outputLanguage, setOutputLanguage] = useState('zh');
     const [message, setMessage] = useState('');
 
     useEffect(() => {
@@ -19,6 +20,7 @@ const Settings = () => {
         setModelName(settings.modelName);
         setSystemPrompt(settings.systemPrompt || '');
         setIconColorPreference(settings.iconColorPreference || 'random');
+        setOutputLanguage(settings.outputLanguage || 'zh');
     }, []);
 
     const handleSave = (e) => {
@@ -34,7 +36,7 @@ const Settings = () => {
             return;
         }
 
-        saveApiSettings({ apiKey, baseUrl, modelName, systemPrompt, iconColorPreference });
+        saveApiSettings({ apiKey, baseUrl, modelName, systemPrompt, iconColorPreference, outputLanguage });
         setMessage('Settings saved successfully!');
         setTimeout(() => setMessage(''), 3000);
     };
@@ -124,6 +126,19 @@ const Settings = () => {
                                         <option value="indigo">Indigo</option>
                                     </select>
                                     <p className="mt-2 text-xs text-slate-400">Select the default color for new mind map icons.</p>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-semibold text-slate-700 mb-2">Output Language</label>
+                                    <select
+                                        value={outputLanguage}
+                                        onChange={(e) => setOutputLanguage(e.target.value)}
+                                        className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all bg-slate-50 focus:bg-white"
+                                    >
+                                        <option value="zh">中文 (Chinese)</option>
+                                        <option value="en">English</option>
+                                    </select>
+                                    <p className="mt-2 text-xs text-slate-400">Choose the language for generated content.</p>
                                 </div>
                             </div>
 

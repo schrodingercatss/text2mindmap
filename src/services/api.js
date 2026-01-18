@@ -1,16 +1,23 @@
 import { getApiSettings } from '../utils/storage';
 
 export const generateMindMapFromText = async (text, fileType = 'txt') => {
-    const { apiKey, baseUrl, modelName, systemPrompt, pdfSystemPrompt } = getApiSettings();
+    const { apiKey, baseUrl, modelName, systemPrompt, pdfSystemPrompt, outputLanguage } = getApiSettings();
 
     if (!apiKey) {
         throw new Error('API Key is missing. Please configure it in Settings.');
     }
 
     // Choose the appropriate prompt based on file type
-    const promptToUse = fileType === 'pdf'
+    let basePrompt = fileType === 'pdf'
         ? (pdfSystemPrompt || systemPrompt || 'Analyze this document and return a JSON mind map.')
         : (systemPrompt || 'Analyze this meeting transcript and return a JSON mind map.');
+
+    // Append language instruction
+    const langInstruction = outputLanguage === 'en'
+        ? '\n\nIMPORTANT: Output all content in English.'
+        : '\n\nIMPORTANT: 请使用中文输出所有内容。';
+
+    const promptToUse = basePrompt + langInstruction;
 
     try {
         // Smart URL construction: check if user already included the endpoint

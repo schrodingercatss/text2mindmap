@@ -13,7 +13,8 @@ export const getApiSettings = () => {
     apiKey: '',
     baseUrl: 'https://api.openai.com/v1',
     modelName: 'gemini-3-flash-preview',
-    iconColorPreference: 'random', // 'random', 'blue', 'green', 'orange', 'purple', 'pink'
+    iconColorPreference: 'random',
+    outputLanguage: 'zh', // 'zh' for Chinese, 'en' for English
     systemPrompt: `You are an expert at analyzing meeting transcripts and structuring them into a visual mind map and process flow.
 
 Your goal is to extract key topics, discussions, and action items and organize them into a specific JSON structure.
@@ -23,9 +24,11 @@ CRITICAL INSTRUCTIONS:
 2. **Detailed Content**: Do NOT use short keywords. Use complete sentences or detailed phrases to capture the full context and nuance of the discussion.
 3. **Rich Structure**: Use the "rich-card" structure for complex topics that involve multiple sub-points, comparisons, or lists.
 
-The output must be a JSON object with two keys: "mindMap" and "processFlow".
+The output must be a JSON object with three keys: "title", "mindMap" and "processFlow".
 
-1. "mindMap": An array where each item represents a main section (Node).
+1. "title": A concise, descriptive title for the content. Extract from the document/transcript if available, otherwise summarize one.
+
+2. "mindMap": An array where each item represents a main section (Node).
    - "theme": Choose from 'orange', 'green', 'pink', 'cyan', 'blue'.
    - "title": The main topic of the section.
    - "items": An array of content items. Each item can be either a simple string OR a "rich-card" object.
@@ -49,13 +52,14 @@ The output must be a JSON object with two keys: "mindMap" and "processFlow".
 
    [Simple String]: Use "Title: Content" format for simple key-value pairs.
 
-2. "processFlow": An array of steps representing the timeline or key process discussed.
+3. "processFlow": An array of steps representing the timeline or key process discussed.
    - "title": Short title of the step.
    - "desc": Brief description.
    - "color": Hex color code (e.g., #87CEFA, #FFB6C1, #90EE90).
 
 Example JSON:
 {
+  "title": "Q1 Product Planning Meeting",
   "mindMap": [
     {
       "theme": "orange",
@@ -88,9 +92,11 @@ CRITICAL INSTRUCTIONS:
 2. **Comprehensive Coverage**: Extract all significant information, not just summaries.
 3. **Rich Structure**: Use the "rich-card" structure for complex topics with multiple sub-points.
 
-The output must be a JSON object with two keys: "mindMap" and "processFlow".
+The output must be a JSON object with three keys: "title", "mindMap" and "processFlow".
 
-1. "mindMap": An array where each item represents a main section (Node).
+1. "title": A concise, descriptive title for the document. Extract from the document if available, otherwise summarize one.
+
+2. "mindMap": An array where each item represents a main section (Node).
    - "theme": Choose from 'orange', 'green', 'pink', 'cyan', 'blue'.
    - "title": The main topic of the section.
    - "items": An array of content items. Each item can be either a simple string OR a "rich-card" object.
@@ -114,13 +120,14 @@ The output must be a JSON object with two keys: "mindMap" and "processFlow".
 
    [Simple String]: Use "Title: Content" format for simple key-value pairs.
 
-2. "processFlow": An array of steps representing the document's key workflow or logical sequence.
+3. "processFlow": An array of steps representing the document's key workflow or logical sequence.
    - "title": Short title of the step.
    - "desc": Brief description.
    - "color": Hex color code (e.g., #87CEFA, #FFB6C1, #90EE90).
 
 Example JSON:
 {
+  "title": "Machine Learning Fundamentals",
   "mindMap": [
     {
       "theme": "blue",
