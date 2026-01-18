@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Plus, Trash2 } from 'lucide-react';
 
 const themeStyles = {
   orange: {
@@ -28,8 +29,33 @@ const themeStyles = {
   },
 };
 
+// Auto-resizing textarea for better editing experience
+const AutoResizeTextarea = ({ value, onChange, onBlur, onKeyDown, className }) => {
+  const textareaRef = useRef(null);
+
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px';
+    }
+  }, [value]);
+
+  return (
+    <textarea
+      ref={textareaRef}
+      value={value}
+      onChange={onChange}
+      onBlur={onBlur}
+      onKeyDown={onKeyDown}
+      autoFocus
+      className={`${className} w-full border-2 border-blue-400 rounded-lg px-3 py-2 outline-none bg-white resize-none overflow-hidden`}
+      rows={1}
+    />
+  );
+};
+
 // Editable text component - double click to edit, blur to save
-const EditableText = ({ value, onSave, isEditing, className, as = 'span' }) => {
+const EditableText = ({ value, onSave, isEditing, className, multiline = false }) => {
   const [editing, setEditing] = useState(false);
   const [text, setText] = useState(value);
 
@@ -47,7 +73,8 @@ const EditableText = ({ value, onSave, isEditing, className, as = 'span' }) => {
   };
 
   const handleKeyDown = (e) => {
-    if (e.key === 'Enter') {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
       e.target.blur();
     }
     if (e.key === 'Escape') {
@@ -58,32 +85,28 @@ const EditableText = ({ value, onSave, isEditing, className, as = 'span' }) => {
 
   if (editing) {
     return (
-      <input
-        type="text"
+      <AutoResizeTextarea
         value={text}
         onChange={(e) => setText(e.target.value)}
         onBlur={handleBlur}
         onKeyDown={handleKeyDown}
-        autoFocus
-        className={`${className} border-2 border-blue-400 rounded px-2 py-1 outline-none bg-white`}
-        style={{ minWidth: '100px' }}
+        className={className}
       />
     );
   }
 
-  const Tag = as;
   return (
-    <Tag
-      className={`${className} ${isEditing ? 'cursor-pointer hover:bg-blue-100 hover:ring-2 hover:ring-blue-300 rounded px-1' : ''}`}
+    <span
+      className={`${className} ${isEditing ? 'cursor-pointer hover:bg-blue-100 hover:ring-2 hover:ring-blue-300 rounded px-1 inline-block' : ''}`}
       onDoubleClick={handleDoubleClick}
-      title={isEditing ? 'Double-click to edit' : ''}
+      title={isEditing ? '双击编辑' : ''}
     >
       {value}
-    </Tag>
+    </span>
   );
 };
 
-const MindMapNode = ({ theme, title, items, isLast, isEditing, sectionIndex, onUpdateSection }) => {
+const MindMapNode = ({ theme, title, items, isLast, isEditing, sectionIndex, onUpdateSection, onDeleteSection, onAddItem, onDeleteItem }) => {
   const styles = themeStyles[theme] || themeStyles.blue;
 
   const handleTitleChange = (newTitle) => {
@@ -112,6 +135,14 @@ const MindMapNode = ({ theme, title, items, isLast, isEditing, sectionIndex, onU
     }
   };
 
+  const handleRichCardContentChange = (itemIndex, newContent) => {
+    if (onUpdateSection) {
+      const newItems = [...items];
+      newItems[itemIndex] = { ...newItems[itemIndex], content: newContent };
+      onUpdateSection(sectionIndex, { items: newItems });
+    }
+  };
+
   const handleSubSectionTitleChange = (itemIndex, subIndex, newTitle) => {
     if (onUpdateSection) {
       const newItems = [...items];
@@ -134,11 +165,33 @@ const MindMapNode = ({ theme, title, items, isLast, isEditing, sectionIndex, onU
     }
   };
 
+  const handleAddPoint = (itemIndex, subIndex) => {
+    if (onUpdateSection) {
+      const newItems = [...items];
+      const newSubSections = [...newItems[itemIndex].subSections];
+      const newPoints = [...newSubSections[subIndex].points, '新内容'];
+      newSubSections[subIndex] = { ...newSubSections[subIndex], points: newPoints };
+      newItems[itemIndex] = { ...newItems[itemIndex], subSections: newSubSections };
+      onUpdateSection(sectionIndex, { items: newItems });
+    }
+  };
+
+  const handleDeletePoint = (itemIndex, subIndex, pointIndex) => {
+    if (onUpdateSection) {
+      const newItems = [...items];
+      const newSubSections = [...newItems[itemIndex].subSections];
+      const newPoints = newSubSections[subIndex].points.filter((_, i) => i !== pointIndex);
+      newSubSections[subIndex] = { ...newSubSections[subIndex], points: newPoints };
+      newItems[itemIndex] = { ...newItems[itemIndex], subSections: newSubSections };
+      onUpdateSection(sectionIndex, { items: newItems });
+    }
+  };
+
   return (
     <div className="relative mb-12 last:mb-0">
       {/* Topic Badge */}
       <div className={`
-        relative z-10 inline-block px-6 py-3 rounded-xl font-bold text-lg shadow-sm border
+        relative z-10 inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-lg shadow-sm border
         ${styles.badge}
       `}>
         <EditableText
@@ -147,6 +200,15 @@ const MindMapNode = ({ theme, title, items, isLast, isEditing, sectionIndex, onU
           isEditing={isEditing}
           className="font-bold"
         />
+        {isEditing && onDeleteSection && (
+          <button
+            onClick={() => onDeleteSection(sectionIndex)}
+            className="p-1 text-red-500 hover:bg-red-100 rounded"
+            title="删除节点"
+          >
+            <Trash2 size={14} />
+          </button>
+        )}
       </div>
 
       {/* Sub-nodes */}
@@ -163,9 +225,19 @@ const MindMapNode = ({ theme, title, items, isLast, isEditing, sectionIndex, onU
 
             {/* Content Card */}
             <div className={`
-              p-5 rounded-xl text-base leading-relaxed transition-colors duration-200
+              p-5 rounded-xl text-base leading-relaxed transition-colors duration-200 relative
               ${styles.content}
             `}>
+              {isEditing && onDeleteItem && (
+                <button
+                  onClick={() => onDeleteItem(sectionIndex, index)}
+                  className="absolute top-2 right-2 p-1 text-red-500 hover:bg-red-100 rounded"
+                  title="删除此项"
+                >
+                  <Trash2 size={14} />
+                </button>
+              )}
+
               {/* Handle Rich Card or Simple String */}
               {item.type === 'rich-card' ? (
                 <div className="bg-white/80 p-4 rounded-lg border border-slate-100 shadow-sm">
@@ -179,7 +251,17 @@ const MindMapNode = ({ theme, title, items, isLast, isEditing, sectionIndex, onU
                       />
                     </div>
                   )}
-                  {item.content && <div className="text-sm text-slate-600 mb-4">{item.content}</div>}
+                  {item.content && (
+                    <div className="text-sm text-slate-600 mb-4">
+                      <EditableText
+                        value={item.content}
+                        onSave={(val) => handleRichCardContentChange(index, val)}
+                        isEditing={isEditing}
+                        className="text-sm"
+                        multiline
+                      />
+                    </div>
+                  )}
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {item.subSections && item.subSections.map((sub, idx) => (
@@ -194,16 +276,35 @@ const MindMapNode = ({ theme, title, items, isLast, isEditing, sectionIndex, onU
                         </div>
                         <ul className="list-disc list-inside space-y-1">
                           {sub.points && sub.points.map((point, pIdx) => (
-                            <li key={pIdx} className="text-xs text-slate-600 leading-relaxed">
-                              <EditableText
-                                value={point}
-                                onSave={(val) => handlePointChange(index, idx, pIdx, val)}
-                                isEditing={isEditing}
-                                className="text-xs"
-                              />
+                            <li key={pIdx} className="text-xs text-slate-600 leading-relaxed flex items-start gap-1">
+                              <span className="flex-1">
+                                <EditableText
+                                  value={point}
+                                  onSave={(val) => handlePointChange(index, idx, pIdx, val)}
+                                  isEditing={isEditing}
+                                  className="text-xs"
+                                />
+                              </span>
+                              {isEditing && (
+                                <button
+                                  onClick={() => handleDeletePoint(index, idx, pIdx)}
+                                  className="p-0.5 text-red-400 hover:text-red-600"
+                                  title="删除"
+                                >
+                                  <Trash2 size={10} />
+                                </button>
+                              )}
                             </li>
                           ))}
                         </ul>
+                        {isEditing && (
+                          <button
+                            onClick={() => handleAddPoint(index, idx)}
+                            className="mt-2 flex items-center gap-1 text-xs text-blue-500 hover:text-blue-700"
+                          >
+                            <Plus size={12} /> 添加内容
+                          </button>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -214,33 +315,32 @@ const MindMapNode = ({ theme, title, items, isLast, isEditing, sectionIndex, onU
                   const content = typeof item === 'string' ? item : item.content;
                   if (!content) return null;
 
-                  if (content.includes(':')) {
-                    const [label, ...rest] = content.split(':');
-                    return (
-                      <span>
-                        <EditableText
-                          value={`${label}:${rest.join(':')}`}
-                          onSave={(val) => handleItemChange(index, val)}
-                          isEditing={isEditing}
-                          className=""
-                        />
-                      </span>
-                    );
-                  } else {
-                    return (
-                      <EditableText
-                        value={content}
-                        onSave={(val) => handleItemChange(index, val)}
-                        isEditing={isEditing}
-                        className=""
-                      />
-                    );
-                  }
+                  return (
+                    <EditableText
+                      value={content}
+                      onSave={(val) => handleItemChange(index, val)}
+                      isEditing={isEditing}
+                      className="block w-full"
+                      multiline
+                    />
+                  );
                 })()
               )}
             </div>
           </div>
         ))}
+
+        {/* Add Item Button */}
+        {isEditing && onAddItem && (
+          <div className="pl-16">
+            <button
+              onClick={() => onAddItem(sectionIndex)}
+              className="flex items-center gap-2 px-4 py-2 text-sm text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
+            >
+              <Plus size={16} /> 添加内容项
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

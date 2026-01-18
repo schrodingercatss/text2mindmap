@@ -1,6 +1,6 @@
 import React, { useRef } from 'react';
 import html2canvas from 'html2canvas';
-import { Download } from 'lucide-react';
+import { Download, Plus } from 'lucide-react';
 import MindMapNode from './MindMapNode';
 import ProcessFlow from './ProcessFlow';
 
@@ -28,6 +28,47 @@ const MindMapViewer = ({ data, processSteps, title, isEditing, onDataChange, onT
         }
     };
 
+    const handleDeleteSection = (sectionIndex) => {
+        if (onDataChange && window.confirm('确定要删除这个节点吗？')) {
+            const newData = data.filter((_, i) => i !== sectionIndex);
+            onDataChange(newData);
+        }
+    };
+
+    const handleAddSection = () => {
+        if (onDataChange) {
+            const themes = ['orange', 'green', 'pink', 'cyan', 'blue'];
+            const newSection = {
+                theme: themes[Math.floor(Math.random() * themes.length)],
+                title: '新节点',
+                items: ['新内容']
+            };
+            onDataChange([...data, newSection]);
+        }
+    };
+
+    const handleAddItem = (sectionIndex) => {
+        if (onDataChange) {
+            const newData = [...data];
+            newData[sectionIndex] = {
+                ...newData[sectionIndex],
+                items: [...newData[sectionIndex].items, '新内容']
+            };
+            onDataChange(newData);
+        }
+    };
+
+    const handleDeleteItem = (sectionIndex, itemIndex) => {
+        if (onDataChange) {
+            const newData = [...data];
+            newData[sectionIndex] = {
+                ...newData[sectionIndex],
+                items: newData[sectionIndex].items.filter((_, i) => i !== itemIndex)
+            };
+            onDataChange(newData);
+        }
+    };
+
     return (
         <div className="min-h-screen bg-slate-50 p-8">
             <div className="max-w-5xl mx-auto">
@@ -49,13 +90,13 @@ const MindMapViewer = ({ data, processSteps, title, isEditing, onDataChange, onT
                             className={`text-4xl font-extrabold text-slate-900 text-center mb-16 tracking-tight ${isEditing ? 'cursor-pointer hover:bg-blue-100 hover:ring-2 hover:ring-blue-300 rounded px-2' : ''}`}
                             onDoubleClick={() => {
                                 if (isEditing && onTitleChange) {
-                                    const newTitle = prompt('Edit title:', title);
+                                    const newTitle = prompt('编辑标题:', title);
                                     if (newTitle && newTitle.trim()) {
                                         onTitleChange(newTitle.trim());
                                     }
                                 }
                             }}
-                            title={isEditing ? 'Double-click to edit title' : ''}
+                            title={isEditing ? '双击编辑标题' : ''}
                         >
                             {title}
                         </h1>
@@ -75,8 +116,23 @@ const MindMapViewer = ({ data, processSteps, title, isEditing, onDataChange, onT
                                 isEditing={isEditing}
                                 sectionIndex={index}
                                 onUpdateSection={handleUpdateSection}
+                                onDeleteSection={handleDeleteSection}
+                                onAddItem={handleAddItem}
+                                onDeleteItem={handleDeleteItem}
                             />
                         ))}
+
+                        {/* Add Section Button */}
+                        {isEditing && (
+                            <div className="mt-8">
+                                <button
+                                    onClick={handleAddSection}
+                                    className="flex items-center gap-2 px-6 py-3 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-xl transition-colors font-medium"
+                                >
+                                    <Plus size={20} /> 添加新节点
+                                </button>
+                            </div>
+                        )}
                     </div>
 
                     {processSteps && processSteps.length > 0 && (
