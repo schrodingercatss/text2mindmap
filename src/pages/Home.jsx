@@ -63,6 +63,7 @@ const Home = () => {
 
                 const newMap = {
                     title: finalTitle,
+                    originalFilename: file.name,
                     data: mindMapData,
                     processSteps: processFlowData,
                     modelName: modelName || 'Unknown Model',
@@ -205,7 +206,17 @@ const Home = () => {
                                 );
                             })()}
 
-                            <h3 className="font-bold text-slate-800 text-lg mb-2 line-clamp-1">{map.title}</h3>
+                            <h3
+                                className="font-bold text-slate-800 text-lg mb-1 line-clamp-1"
+                                title={map.title}
+                            >
+                                {map.title}
+                            </h3>
+                            {map.originalFilename && (
+                                <p className="text-slate-400 text-[10px] mb-2 truncate" title={map.originalFilename}>
+                                    {map.originalFilename}
+                                </p>
+                            )}
                             <p className="text-slate-400 text-xs font-medium mb-3">
                                 {new Date(map.createdAt).toLocaleString()}
                             </p>

@@ -193,3 +193,14 @@ export const deleteMindMap = (id) => {
   const newMaps = maps.filter((m) => m.id !== id);
   localStorage.setItem(STORAGE_KEYS.MIND_MAPS, JSON.stringify(newMaps));
 };
+
+export const updateMindMap = (id, updates) => {
+  const maps = getMindMaps();
+  const index = maps.findIndex((m) => m.id === id);
+  if (index !== -1) {
+    maps[index] = { ...maps[index], ...updates };
+    localStorage.setItem(STORAGE_KEYS.MIND_MAPS, JSON.stringify(maps));
+    return maps[index];
+  }
+  return null;
+};
