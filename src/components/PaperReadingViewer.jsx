@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useMemo, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
@@ -6,8 +6,42 @@ import 'katex/dist/katex.min.css';
 import html2canvas from 'html2canvas';
 import { Download, BookOpen, Quote, Sparkles } from 'lucide-react';
 
+const transformOutsideCodeFences = (markdown, transform) =>
+    markdown.split(/(```[\s\S]*?```)/g).map(part => (
+        part.startsWith('```') ? part : transform(part)
+    )).join('');
+
+const rewriteMathText = (latex) => latex
+    .replace(/(^|[^\\])\bif\b/g, '$1\\text{if}')
+    .replace(/(^|[^\\])\botherwise\b/g, '$1\\text{otherwise}');
+
+const normalizeMarkdownMath = (markdown) => {
+    if (!markdown) return markdown;
+
+    return transformOutsideCodeFences(markdown, (text) => {
+        let result = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+
+        // If a line ends with "X =" and the next line starts a display formula, move "X =" into the formula.
+        result = result.replace(/([A-Za-z][A-Za-z0-9_ ]{0,40})\s*=\s*\n\$\$/g, '\n$$$1 =');
+
+        // Merge "$X =$" immediately followed by a display formula into a single display block.
+        result = result.replace(/\$([^\n$]*?=\s*)\$\s*\n+\s*\$\$([\s\S]*?)\$\$/g, (_match, lhs, block) => (
+            `$$${rewriteMathText(`${lhs}${block}`.trim())}$$`
+        ));
+
+        // Rewrite common plain-text words inside display math blocks.
+        result = result.replace(/\$\$([\s\S]*?)\$\$/g, (_match, block) => `$$${rewriteMathText(block)}$$`);
+
+        // Rewrite common plain-text words inside inline math blocks.
+        result = result.replace(/\$([^\n$]+?)\$/g, (_match, inline) => `$${rewriteMathText(inline)}$`);
+
+        return result;
+    });
+};
+
 const PaperReadingViewer = ({ title, content }) => {
     const contentRef = useRef(null);
+    const processedContent = useMemo(() => normalizeMarkdownMath(content || ''), [content]);
 
     const handleExport = async () => {
         if (contentRef.current) {
@@ -179,7 +213,7 @@ const PaperReadingViewer = ({ title, content }) => {
                             rehypePlugins={[rehypeKatex]}
                             components={components}
                         >
-                            {content}
+                            {processedContent}
                         </ReactMarkdown>
                     </article>
 
