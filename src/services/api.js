@@ -177,15 +177,24 @@ const cleanupMarkdown = (text) => {
     result = result.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 
     // Fix: Convert single-line code blocks to inline code
-    // Handles: ```language\ncontent\n``` or ``` \n content \n ```
-    // The regex is more flexible to handle various spacing patterns
+    // Pattern 1: Code blocks WITH newlines (``` \n content \n ```)
     result = result.replace(/```[ \t]*[\w-]*[ \t]*\n\s*([^\n]+?)\s*\n\s*```/g, (match, content) => {
         const trimmed = content.trim();
         // Only convert if content looks like a single word/short phrase (not actual code)
         if (trimmed.length < 100 && !trimmed.includes(';') && !trimmed.includes('{') && !trimmed.includes('(')) {
             return `\`${trimmed}\``;
         }
-        return match; // Keep as code block if it looks like actual code
+        return match;
+    });
+
+    // Pattern 2: Code blocks WITHOUT newlines (```content```) - inline style
+    result = result.replace(/```([^`\n]{1,80}?)```/g, (match, content) => {
+        const trimmed = content.trim();
+        // Only convert if content is short and doesn't look like code
+        if (trimmed && trimmed.length < 80 && !trimmed.includes(';') && !trimmed.includes('{') && !trimmed.includes('(')) {
+            return `\`${trimmed}\``;
+        }
+        return match;
     });
 
     return result;
