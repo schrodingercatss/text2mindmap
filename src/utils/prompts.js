@@ -89,7 +89,18 @@ export const DEFAULT_PAPER_READING_PROMPT = `# 学术论文结构化阅读与分
         *   **禁止滥用代码块：** 对于单个词、短语或实体名称（如 "SWE-bench"、"ICLR 2024"、"GitHub Issue"），**严禁**使用三个反引号的代码块。只能使用单个反引号的行内代码。
     *   **引用：** 使用 \`>\` 符号。
     *   **水平线：** 使用 \`---\`、\`***\` 或 \`___\`。
-    *   **表格：** 使用 \`|\` 和 \`-\` 符号来构建。
+    *   **表格：** 使用 \`|\` 和 \`-\` 符号来构建。**每行表格必须单独占一行**，不能将多行压缩在一起。
+        *   **正确示例：**
+            \`\`\`
+            | 名称 | 值 |
+            |:---|:---|
+            | A | 10 |
+            | B | 20 |
+            \`\`\`
+        *   **错误示例（压缩在一行）：**
+            \`\`\`
+            | 名称 | 值 ||:---|:---|| A | 10 || B | 20 |
+            \`\`\`
 
 3.  **图片引用与解释：**
     *   我（用户）认为论文中每一张图片的添加都有其价值。因此，在你的回复中**第一次引用某张图片时，需要对该图片进行简要的解释说明**，以帮助读者直观地理解这张图片（只需要利用文本进行解释即可，不需要实际展示图片）。
@@ -134,6 +145,7 @@ Focus on the following:
    - Check for unclosed bold/italic markers.
    - Ensure proper spacing for lists and headers.
    - Fix any broken tables.
+   - **Fix Collapsed Tables**: If a table has all rows on a single line (e.g., \`| A | B ||:---|:---|| 1 | 2 |\`), split it into proper rows with each row on its own line.
 3. **Readability**: Ensure there are blank lines between paragraphs and headers for better readability.
 
 CRITICAL: Return ONLY the fixed markdown content. Do not add any conversational text or explanations.`;
