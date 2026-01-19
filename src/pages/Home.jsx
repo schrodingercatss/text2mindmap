@@ -1,21 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Upload, Settings as SettingsIcon, FileText, Trash2, Loader, Plus, Search, Cpu } from 'lucide-react';
+import { Settings as SettingsIcon, FileText, Trash2, Loader, Search, Cpu, BookOpen, GitBranch, X } from 'lucide-react';
 import { saveMindMap, getMindMaps, deleteMindMap, getApiSettings } from '../utils/storage';
-import { generateMindMapFromText } from '../services/api';
+import { generateMindMapFromText, generatePaperReading } from '../services/api';
 
 const Home = () => {
     const navigate = useNavigate();
     const [maps, setMaps] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [loadingMessage, setLoadingMessage] = useState('');
     const [error, setError] = useState('');
     const [searchTerm, setSearchTerm] = useState('');
+    const [showModeModal, setShowModeModal] = useState(false);
+    const [pendingFile, setPendingFile] = useState(null);
 
     useEffect(() => {
         setMaps(getMindMaps());
     }, []);
 
-    const handleFileUpload = async (event) => {
+    const handleFileSelect = (event) => {
         const file = event.target.files[0];
         if (!file) return;
 
@@ -29,8 +32,22 @@ const Home = () => {
             return;
         }
 
+        // Show mode selection modal
+        setPendingFile(file);
+        setShowModeModal(true);
+    };
+
+    const handleModeSelect = async (mode) => {
+        setShowModeModal(false);
+        if (!pendingFile) return;
+
+        const file = pendingFile;
+        setPendingFile(null);
         setLoading(true);
         setError('');
+
+        const fileName = file.name.toLowerCase();
+        const isPdf = fileName.endsWith('.pdf');
 
         const reader = new FileReader();
         reader.onload = async (e) => {
@@ -39,34 +56,58 @@ const Home = () => {
                 let fileType;
 
                 if (isPdf) {
-                    // For PDF: get base64 data (remove the data URL prefix)
                     const base64 = e.target.result.split(',')[1];
                     content = base64;
                     fileType = 'pdf';
                 } else {
-                    // For TXT: use plain text
                     content = e.target.result;
                     fileType = 'txt';
                 }
 
-                const generatedData = await generateMindMapFromText(content, fileType);
-                const { modelName } = getApiSettings();
-
-                // Handle both old (array) and new (object) formats for backward compatibility
-                const mindMapData = Array.isArray(generatedData) ? generatedData : generatedData.mindMap;
-                const processFlowData = Array.isArray(generatedData) ? [] : (generatedData.processFlow || []);
-
-                // Use extracted title from API, fall back to filename
-                const extractedTitle = generatedData.title;
+                const { modelName, paperReadingModelName } = getApiSettings();
                 const fallbackTitle = file.name.replace(/\.(txt|pdf)$/i, '');
-                const finalTitle = extractedTitle && extractedTitle.trim() ? extractedTitle.trim() : fallbackTitle;
+
+                let mindMapData = null;
+                let processFlowData = [];
+                let paperNotesContent = null;
+                let finalTitle = fallbackTitle;
+
+                if (mode === 'mindmap' || mode === 'both') {
+                    setLoadingMessage('Generating mind map...');
+                }
+                if (mode === 'paper' || mode === 'both') {
+                    setLoadingMessage(mode === 'both' ? 'Generating mind map and paper notes...' : 'Generating paper notes...');
+                }
+
+                // Execute API calls based on mode
+                if (mode === 'both') {
+                    // Parallel calls
+                    const [mindMapResult, paperResult] = await Promise.all([
+                        generateMindMapFromText(content, fileType),
+                        generatePaperReading(content, fileType)
+                    ]);
+
+                    mindMapData = Array.isArray(mindMapResult) ? mindMapResult : mindMapResult.mindMap;
+                    processFlowData = Array.isArray(mindMapResult) ? [] : (mindMapResult.processFlow || []);
+                    finalTitle = mindMapResult.title?.trim() || fallbackTitle;
+                    paperNotesContent = paperResult;
+                } else if (mode === 'mindmap') {
+                    const generatedData = await generateMindMapFromText(content, fileType);
+                    mindMapData = Array.isArray(generatedData) ? generatedData : generatedData.mindMap;
+                    processFlowData = Array.isArray(generatedData) ? [] : (generatedData.processFlow || []);
+                    finalTitle = generatedData.title?.trim() || fallbackTitle;
+                } else if (mode === 'paper') {
+                    paperNotesContent = await generatePaperReading(content, fileType);
+                }
 
                 const newMap = {
                     title: finalTitle,
                     originalFilename: file.name,
                     data: mindMapData,
                     processSteps: processFlowData,
-                    modelName: modelName || 'Unknown Model',
+                    paperNotes: paperNotesContent,
+                    mode: mode,
+                    modelName: mode === 'paper' ? paperReadingModelName : modelName,
                     fileType: fileType
                 };
 
@@ -77,10 +118,10 @@ const Home = () => {
                 setError(err.message);
             } finally {
                 setLoading(false);
+                setLoadingMessage('');
             }
         };
 
-        // Read file based on type
         if (isPdf) {
             reader.readAsDataURL(file);
         } else {
@@ -90,7 +131,7 @@ const Home = () => {
 
     const handleDelete = (e, id) => {
         e.stopPropagation();
-        if (window.confirm('Are you sure you want to delete this mind map?')) {
+        if (window.confirm('Are you sure you want to delete this?')) {
             deleteMindMap(id);
             setMaps(getMindMaps());
         }
@@ -102,14 +143,20 @@ const Home = () => {
             map.title.toLowerCase().includes(searchTerm.toLowerCase())
         );
 
+    const getModeLabel = (map) => {
+        if (map.mode === 'both') return 'Mind Map + Notes';
+        if (map.mode === 'paper') return 'Paper Notes';
+        return 'Mind Map';
+    };
+
     return (
         <div className="min-h-screen bg-slate-50 p-8">
             <div className="max-w-7xl mx-auto">
                 {/* Header */}
                 <div className="flex justify-between items-center mb-12">
                     <div>
-                        <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Mind Maps</h1>
-                        <p className="text-slate-500 mt-1">Manage and organize your meeting insights</p>
+                        <h1 className="text-3xl font-bold text-slate-900 tracking-tight">text2mindmap</h1>
+                        <p className="text-slate-500 mt-1">Generate mind maps and paper notes from documents</p>
                     </div>
                     <button
                         onClick={() => navigate('/settings')}
@@ -131,7 +178,7 @@ const Home = () => {
                     <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400" size={20} />
                     <input
                         type="text"
-                        placeholder="Search maps..."
+                        placeholder="Search..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="w-full pl-12 pr-4 py-3 bg-white rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-100 focus:border-blue-400 outline-none transition-all"
@@ -143,28 +190,28 @@ const Home = () => {
                     <div
                         onClick={() => !loading && document.getElementById('file-upload').click()}
                         className={`
-              relative group cursor-pointer border-2 border-dashed border-blue-200 bg-blue-50/50 hover:bg-blue-50 hover:border-blue-400 rounded-2xl p-8 flex flex-col items-center justify-center min-h-[240px] transition-all duration-300
-              ${loading ? 'opacity-75 pointer-events-none' : ''}
-            `}
+                            relative group cursor-pointer border-2 border-dashed border-blue-200 bg-blue-50/50 hover:bg-blue-50 hover:border-blue-400 rounded-2xl p-8 flex flex-col items-center justify-center min-h-[240px] transition-all duration-300
+                            ${loading ? 'opacity-75 pointer-events-none' : ''}
+                        `}
                     >
                         {loading ? (
                             <div className="text-center">
                                 <Loader className="animate-spin text-blue-600 mb-4 mx-auto" size={32} />
-                                <p className="text-blue-800 font-medium">Generating...</p>
+                                <p className="text-blue-800 font-medium">{loadingMessage || 'Generating...'}</p>
                             </div>
                         ) : (
                             <>
                                 <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-sm mb-4 group-hover:scale-110 transition-transform duration-300">
-                                    <Plus className="text-blue-600" size={32} />
+                                    <FileText className="text-blue-600" size={32} />
                                 </div>
-                                <p className="text-blue-900 font-bold text-lg">New Mind Map</p>
-                                <p className="text-blue-600/70 text-sm mt-1">Upload .txt or .pdf</p>
+                                <p className="text-blue-900 font-bold text-lg">Upload Document</p>
+                                <p className="text-blue-600/70 text-sm mt-1">PDF or TXT file</p>
                                 <input
                                     id="file-upload"
                                     type="file"
                                     accept=".txt,.pdf"
                                     className="hidden"
-                                    onChange={handleFileUpload}
+                                    onChange={handleFileSelect}
                                 />
                             </>
                         )}
@@ -198,10 +245,11 @@ const Home = () => {
                                     indigo: 'bg-indigo-50 text-indigo-600',
                                 };
                                 const colorClass = colorMap[map.iconColor] || colorMap['green'];
+                                const IconComponent = map.mode === 'paper' ? BookOpen : (map.mode === 'both' ? GitBranch : FileText);
 
                                 return (
                                     <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 ${colorClass}`}>
-                                        <FileText size={24} />
+                                        <IconComponent size={24} />
                                     </div>
                                 );
                             })()}
@@ -221,9 +269,9 @@ const Home = () => {
                                 {new Date(map.createdAt).toLocaleString()}
                             </p>
 
-                            <div className="flex items-center gap-2">
-                                <span className="px-2 py-1 bg-slate-100 text-slate-600 text-[10px] rounded-md font-medium uppercase tracking-wider">
-                                    {map.data.length} Sections
+                            <div className="flex flex-wrap items-center gap-2">
+                                <span className="px-2 py-1 bg-slate-100 text-slate-600 text-[10px] rounded-md font-medium">
+                                    {getModeLabel(map)}
                                 </span>
                                 {map.modelName && (
                                     <span className="px-2 py-1 bg-blue-50 text-blue-600 text-[10px] rounded-md font-medium flex items-center gap-1">
@@ -236,6 +284,74 @@ const Home = () => {
                     ))}
                 </div>
             </div>
+
+            {/* Mode Selection Modal */}
+            {showModeModal && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl">
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-xl font-bold text-slate-800">Choose Generation Mode</h2>
+                            <button
+                                onClick={() => {
+                                    setShowModeModal(false);
+                                    setPendingFile(null);
+                                }}
+                                className="p-2 hover:bg-slate-100 rounded-lg"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        <p className="text-slate-600 mb-6">
+                            Select how you want to process: <strong>{pendingFile?.name}</strong>
+                        </p>
+
+                        <div className="space-y-3">
+                            <button
+                                onClick={() => handleModeSelect('mindmap')}
+                                className="w-full p-4 border-2 border-slate-200 rounded-xl hover:border-blue-400 hover:bg-blue-50 transition-all flex items-center gap-4 text-left"
+                            >
+                                <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                                    <GitBranch className="text-blue-600" size={24} />
+                                </div>
+                                <div>
+                                    <div className="font-semibold text-slate-800">Mind Map Only</div>
+                                    <div className="text-sm text-slate-500">Generate structured mind map</div>
+                                </div>
+                            </button>
+
+                            <button
+                                onClick={() => handleModeSelect('paper')}
+                                className="w-full p-4 border-2 border-slate-200 rounded-xl hover:border-purple-400 hover:bg-purple-50 transition-all flex items-center gap-4 text-left"
+                            >
+                                <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
+                                    <BookOpen className="text-purple-600" size={24} />
+                                </div>
+                                <div>
+                                    <div className="font-semibold text-slate-800">Paper Notes Only</div>
+                                    <div className="text-sm text-slate-500">Generate detailed reading notes</div>
+                                </div>
+                            </button>
+
+                            <button
+                                onClick={() => handleModeSelect('both')}
+                                className="w-full p-4 border-2 border-emerald-300 bg-emerald-50 rounded-xl hover:border-emerald-500 hover:bg-emerald-100 transition-all flex items-center gap-4 text-left"
+                            >
+                                <div className="w-12 h-12 bg-emerald-200 rounded-xl flex items-center justify-center">
+                                    <div className="flex">
+                                        <GitBranch className="text-emerald-700" size={16} />
+                                        <BookOpen className="text-emerald-700 -ml-1" size={16} />
+                                    </div>
+                                </div>
+                                <div>
+                                    <div className="font-semibold text-emerald-800">Both (Recommended)</div>
+                                    <div className="text-sm text-emerald-600">Generate mind map + paper notes</div>
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

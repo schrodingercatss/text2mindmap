@@ -88,3 +88,79 @@ export const generateMindMapFromText = async (text, fileType = 'txt') => {
         throw error;
     }
 };
+
+// Generate paper reading notes (returns markdown)
+export const generatePaperReading = async (text, fileType = 'pdf') => {
+    const { apiKey, baseUrl, paperReadingModelName, paperReadingPrompt } = getApiSettings();
+
+    if (!apiKey) {
+        throw new Error('API Key is missing. Please configure it in Settings.');
+    }
+
+    const promptToUse = paperReadingPrompt || 'Analyze this academic paper and provide detailed notes in markdown format.';
+
+    try {
+        // Smart URL construction
+        let url = baseUrl.replace(/\/$/, '');
+        if (!url.endsWith('/chat/completions')) {
+            url = `${url}/chat/completions`;
+        }
+
+        // Build the message content based on file type
+        let userContent;
+        if (fileType === 'pdf') {
+            userContent = [
+                {
+                    type: 'file',
+                    file: {
+                        filename: 'paper.pdf',
+                        file_data: `data:application/pdf;base64,${text}`
+                    }
+                },
+                {
+                    type: 'text',
+                    text: '请分析这篇学术论文并按照框架生成详细的阅读笔记。'
+                }
+            ];
+        } else {
+            userContent = text;
+        }
+
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`,
+            },
+            body: JSON.stringify({
+                model: paperReadingModelName || 'gemini-2.5-pro-thinking',
+                messages: [
+                    { role: 'system', content: promptToUse },
+                    { role: 'user', content: userContent },
+                ],
+                temperature: 0.3,
+            }),
+        });
+
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            const textBody = await response.text();
+            console.error('API Error: Received non-JSON response', textBody);
+            throw new Error(`API returned non-JSON response (Status ${response.status}). Check your Base URL.`);
+        }
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error?.message || `API request failed with status ${response.status}`);
+        }
+
+        const data = await response.json();
+        const content = data.choices[0].message.content;
+
+        // Return raw markdown content
+        return content;
+    } catch (error) {
+        console.error('Error generating paper reading notes:', error);
+        throw error;
+    }
+};

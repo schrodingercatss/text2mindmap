@@ -1,3 +1,5 @@
+import { DEFAULT_PAPER_READING_PROMPT } from './prompts';
+
 const STORAGE_KEYS = {
   API_SETTINGS: 'mindmap_api_settings',
   MIND_MAPS: 'mindmap_saved_maps',
@@ -13,8 +15,10 @@ export const getApiSettings = () => {
     apiKey: '',
     baseUrl: 'https://api.openai.com/v1',
     modelName: 'gemini-3-flash-preview',
+    paperReadingModelName: 'gemini-2.5-pro-thinking',
     iconColorPreference: 'random',
     outputLanguage: 'zh', // 'zh' for Chinese, 'en' for English
+    paperReadingPrompt: DEFAULT_PAPER_READING_PROMPT,
     systemPrompt: `You are an expert at analyzing meeting transcripts and structuring them into a visual mind map and process flow.
 
 Your goal is to extract key topics, discussions, and action items and organize them into a specific JSON structure.
