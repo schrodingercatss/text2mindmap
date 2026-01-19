@@ -9,6 +9,7 @@ const Home = () => {
     const [maps, setMaps] = useState([]);
     const [loading, setLoading] = useState(false);
     const [loadingMessage, setLoadingMessage] = useState('');
+    const [progress, setProgress] = useState(0);
     const [error, setError] = useState('');
     const [searchTerm, setSearchTerm] = useState('');
     const [showModeModal, setShowModeModal] = useState(false);
@@ -72,6 +73,8 @@ const Home = () => {
                 let paperNotesContent = null;
                 let finalTitle = fallbackTitle;
 
+                setProgress(10); // Started
+
                 if (mode === 'mindmap' || mode === 'both') {
                     setLoadingMessage('Generating mind map...');
                 }
@@ -87,23 +90,29 @@ const Home = () => {
                         generatePaperReading(content, fileType)
                     ]);
 
+                    setProgress(60); // Generation complete
+
                     mindMapData = Array.isArray(mindMapResult) ? mindMapResult : mindMapResult.mindMap;
                     processFlowData = Array.isArray(mindMapResult) ? [] : (mindMapResult.processFlow || []);
                     finalTitle = mindMapResult.title?.trim() || fallbackTitle;
                     paperNotesContent = paperResult;
                 } else if (mode === 'mindmap') {
                     const generatedData = await generateMindMapFromText(content, fileType);
+                    setProgress(90); // Mind map generation complete
                     mindMapData = Array.isArray(generatedData) ? generatedData : generatedData.mindMap;
                     processFlowData = Array.isArray(generatedData) ? [] : (generatedData.processFlow || []);
                     finalTitle = generatedData.title?.trim() || fallbackTitle;
                 } else if (mode === 'paper') {
                     paperNotesContent = await generatePaperReading(content, fileType);
+                    setProgress(60); // Paper notes generation complete
                 }
 
                 // Step 2: Repair formatting for paper notes
                 if (paperNotesContent) {
-                    setLoadingMessage('Refining formatting...');
+                    setLoadingMessage('Refining formatting (this may take a minute)...');
+                    setProgress(70);
                     paperNotesContent = await repairPaperNotes(paperNotesContent);
+                    setProgress(95);
                 }
 
                 const newMap = {
@@ -118,6 +127,7 @@ const Home = () => {
                 };
 
                 const savedMap = saveMindMap(newMap);
+                setProgress(100);
                 setMaps(getMindMaps());
                 navigate(`/map/${savedMap.id}`);
             } catch (err) {
@@ -125,6 +135,7 @@ const Home = () => {
             } finally {
                 setLoading(false);
                 setLoadingMessage('');
+                setProgress(0);
             }
         };
 
@@ -201,9 +212,16 @@ const Home = () => {
                         `}
                     >
                         {loading ? (
-                            <div className="text-center">
+                            <div className="text-center w-full max-w-xs">
                                 <Loader className="animate-spin text-blue-600 mb-4 mx-auto" size={32} />
-                                <p className="text-blue-800 font-medium">{loadingMessage || 'Generating...'}</p>
+                                <p className="text-blue-800 font-medium mb-3">{loadingMessage || 'Generating...'}</p>
+                                <div className="w-full bg-blue-100 rounded-full h-2.5 overflow-hidden">
+                                    <div
+                                        className="bg-blue-600 h-2.5 rounded-full transition-all duration-500 ease-out"
+                                        style={{ width: `${progress}%` }}
+                                    ></div>
+                                </div>
+                                <p className="text-blue-400 text-xs mt-2 font-mono">{progress}%</p>
                             </div>
                         ) : (
                             <>

@@ -194,7 +194,7 @@ export const repairPaperNotes = async (content) => {
 
         // Create a controller for timeout
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
+        const timeoutId = setTimeout(() => controller.abort(), 180000); // 3 minute timeout
 
         const response = await fetch(url, {
             method: 'POST',
