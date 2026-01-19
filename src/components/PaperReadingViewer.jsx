@@ -53,17 +53,27 @@ const PaperReadingViewer = ({ title, content }) => {
 
             // SMART DETECTION: Force inline rendering for simple, short content
             // even if react-markdown thinks it's a block code
+            const looksLikeCode =
+                codeContent.includes(';') ||
+                codeContent.includes('{') ||
+                codeContent.includes('=') ||
+                codeContent.includes('import ') ||
+                codeContent.includes('def ') ||
+                codeContent.includes('class ') ||
+                codeContent.includes('function ') ||
+                codeContent.includes('const ') ||
+                codeContent.includes('let ') ||
+                codeContent.includes('var ') ||
+                codeContent.includes('return ') ||
+                codeContent.includes('->') ||
+                codeContent.includes('=>') ||
+                /\w+\s*\([^)]*\)\s*\{/.test(codeContent) || // function call with brace
+                /^\s*(if|for|while|switch)\s*\(/.test(codeContent); // control structures
+
             const shouldBeInline = inline || (
-                codeContent.length < 80 &&
+                codeContent.length < 100 &&
                 !codeContent.includes('\n') &&
-                !codeContent.includes(';') &&
-                !codeContent.includes('{') &&
-                !codeContent.includes('(') &&
-                !codeContent.includes('=') &&
-                !codeContent.includes('import ') &&
-                !codeContent.includes('def ') &&
-                !codeContent.includes('class ') &&
-                !codeContent.includes('function ')
+                !looksLikeCode
             );
 
             return !shouldBeInline ? (
