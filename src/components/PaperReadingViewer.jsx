@@ -49,7 +49,24 @@ const PaperReadingViewer = ({ title, content }) => {
         ),
         code: ({ node, inline, className, children, ...props }) => {
             const match = /language-(\w+)/.exec(className || '');
-            return !inline ? (
+            const codeContent = String(children).replace(/\n$/, '');
+
+            // SMART DETECTION: Force inline rendering for simple, short content
+            // even if react-markdown thinks it's a block code
+            const shouldBeInline = inline || (
+                codeContent.length < 80 &&
+                !codeContent.includes('\n') &&
+                !codeContent.includes(';') &&
+                !codeContent.includes('{') &&
+                !codeContent.includes('(') &&
+                !codeContent.includes('=') &&
+                !codeContent.includes('import ') &&
+                !codeContent.includes('def ') &&
+                !codeContent.includes('class ') &&
+                !codeContent.includes('function ')
+            );
+
+            return !shouldBeInline ? (
                 <div className="my-6 rounded-xl overflow-hidden shadow-lg border border-slate-200 bg-[#1e1e1e]">
                     <div className="flex items-center gap-1.5 px-4 py-2 bg-[#2d2d2d] border-b border-[#3d3d3d]">
                         <div className="w-3 h-3 rounded-full bg-red-500" />
