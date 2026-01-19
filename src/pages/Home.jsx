@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Settings as SettingsIcon, FileText, Trash2, Loader, Search, Cpu, BookOpen, GitBranch, X } from 'lucide-react';
+import { Settings as SettingsIcon, FileText, Trash2, Loader, Search, Cpu, BookOpen, GitBranch, X, ClipboardPaste } from 'lucide-react';
 import { saveMindMap, getMindMaps, deleteMindMap, getApiSettings } from '../utils/storage';
 import { generateMindMapFromText, generatePaperReading, repairPaperNotes } from '../services/api';
 
@@ -14,6 +14,8 @@ const Home = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [showModeModal, setShowModeModal] = useState(false);
     const [pendingFile, setPendingFile] = useState(null);
+    const [showPasteModal, setShowPasteModal] = useState(false);
+    const [pasteContent, setPasteContent] = useState('');
 
     useEffect(() => {
         setMaps(getMindMaps());
@@ -38,6 +40,39 @@ const Home = () => {
         setShowModeModal(true);
     };
 
+    const handlePasteFromClipboard = async () => {
+        try {
+            const text = await navigator.clipboard.readText();
+            if (text && text.trim()) {
+                setPasteContent(text);
+                setShowPasteModal(true);
+            } else {
+                setError('Clipboard is empty or contains no text.');
+            }
+        } catch (err) {
+            // Fallback: show modal with empty textarea for manual paste
+            setPasteContent('');
+            setShowPasteModal(true);
+        }
+    };
+
+    const handlePasteSubmit = () => {
+        if (!pasteContent.trim()) {
+            setError('Please paste some content.');
+            return;
+        }
+        // Create a virtual file-like object
+        const virtualFile = {
+            name: 'Pasted Content.txt',
+            type: 'text',
+            content: pasteContent.trim()
+        };
+        setPendingFile(virtualFile);
+        setShowPasteModal(false);
+        setPasteContent('');
+        setShowModeModal(true);
+    };
+
     const handleModeSelect = async (mode) => {
         setShowModeModal(false);
         if (!pendingFile) return;
@@ -47,8 +82,10 @@ const Home = () => {
         setLoading(true);
         setError('');
 
+        // Check if this is a virtual file (from paste) or a real file
+        const isVirtualFile = file.content !== undefined;
         const fileName = file.name.toLowerCase();
-        const isPdf = fileName.endsWith('.pdf');
+        const isPdf = !isVirtualFile && fileName.endsWith('.pdf');
 
         const reader = new FileReader();
         reader.onload = async (e) => {
@@ -139,7 +176,13 @@ const Home = () => {
             }
         };
 
-        if (isPdf) {
+        // Handle virtual file (from paste) vs real file
+        if (isVirtualFile) {
+            // For virtual files, directly trigger the onload logic with the content
+            reader.onload({
+                target: { result: file.content }
+            });
+        } else if (isPdf) {
             reader.readAsDataURL(file);
         } else {
             reader.readAsText(file);
@@ -239,6 +282,21 @@ const Home = () => {
                                 />
                             </>
                         )}
+                    </div>
+
+                    {/* Paste from Clipboard Card */}
+                    <div
+                        onClick={() => !loading && handlePasteFromClipboard()}
+                        className={`
+                            relative group cursor-pointer border-2 border-dashed border-emerald-200 bg-emerald-50/50 hover:bg-emerald-50 hover:border-emerald-400 rounded-2xl p-8 flex flex-col items-center justify-center min-h-[240px] transition-all duration-300
+                            ${loading ? 'opacity-75 pointer-events-none' : ''}
+                        `}
+                    >
+                        <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-sm mb-4 group-hover:scale-110 transition-transform duration-300">
+                            <ClipboardPaste className="text-emerald-600" size={32} />
+                        </div>
+                        <p className="text-emerald-900 font-bold text-lg">Paste Content</p>
+                        <p className="text-emerald-600/70 text-sm mt-1">From clipboard</p>
                     </div>
 
                     {/* Saved Maps */}
@@ -372,6 +430,62 @@ const Home = () => {
                                     <div className="text-sm text-emerald-600">Generate mind map + paper notes</div>
                                 </div>
                             </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Paste Content Modal */}
+            {showPasteModal && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-2xl p-8 max-w-2xl w-full mx-4 shadow-2xl">
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-xl font-bold text-slate-800">Paste Your Content</h2>
+                            <button
+                                onClick={() => {
+                                    setShowPasteModal(false);
+                                    setPasteContent('');
+                                }}
+                                className="p-2 hover:bg-slate-100 rounded-lg"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        <p className="text-slate-600 mb-4">
+                            Paste the text content you want to summarize below:
+                        </p>
+
+                        <textarea
+                            value={pasteContent}
+                            onChange={(e) => setPasteContent(e.target.value)}
+                            placeholder="Paste your content here... (Ctrl+V / Cmd+V)"
+                            className="w-full h-64 p-4 border-2 border-slate-200 rounded-xl focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 outline-none resize-none font-mono text-sm"
+                            autoFocus
+                        />
+
+                        <div className="flex justify-between items-center mt-4">
+                            <span className="text-sm text-slate-500">
+                                {pasteContent.length} characters
+                            </span>
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => {
+                                        setShowPasteModal(false);
+                                        setPasteContent('');
+                                    }}
+                                    className="px-6 py-2 border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handlePasteSubmit}
+                                    disabled={!pasteContent.trim()}
+                                    className="px-6 py-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    Continue
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
