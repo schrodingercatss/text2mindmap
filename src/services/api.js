@@ -166,6 +166,14 @@ export const generatePaperReading = async (text, fileType = 'pdf') => {
     }
 };
 
+// Helper to clean up markdown regex-based
+const cleanupMarkdown = (text) => {
+    if (!text) return text;
+    // Fix: Convert single-line code blocks to inline code
+    // Matches ```language\ncontent\n``` where content is a single line
+    return text.replace(/```(?:[\w-]+)?\n([^\n]+?)\n```/g, '`$1`');
+};
+
 // Repair markdown and LaTeX formatting
 export const repairPaperNotes = async (content) => {
     const { apiKey, baseUrl, modelName } = getApiSettings();
@@ -174,11 +182,19 @@ export const repairPaperNotes = async (content) => {
         throw new Error('API Key is missing.');
     }
 
+    // First, apply regex cleanup to the original content
+    // This catches the obvious "single word code block" issue even if the LLM fails
+    let processedContent = cleanupMarkdown(content);
+
     try {
         let url = baseUrl.replace(/\/$/, '');
         if (!url.endsWith('/chat/completions')) {
             url = `${url}/chat/completions`;
         }
+
+        // Create a controller for timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
 
         const response = await fetch(url, {
             method: 'POST',
@@ -187,28 +203,34 @@ export const repairPaperNotes = async (content) => {
                 'Authorization': `Bearer ${apiKey}`,
             },
             body: JSON.stringify({
-                model: modelName || 'gpt-4o', // Use the faster/standard model for repair
+                model: modelName || 'gpt-4o',
                 messages: [
                     { role: 'system', content: REPAIR_FORMAT_PROMPT },
-                    { role: 'user', content: content },
+                    { role: 'user', content: processedContent },
                 ],
-                temperature: 0.1, // Low temperature for deterministic formatting
+                temperature: 0.1,
             }),
+            signal: controller.signal
         });
 
+        clearTimeout(timeoutId);
+
         if (!response.ok) {
-            // If repair fails, just return original content to avoid breaking the flow
-            console.warn('Repair request failed, returning original content.');
-            return content;
+            console.warn('Repair request failed, returning regex-cleaned content.');
+            return processedContent;
         }
 
         const data = await response.json();
         const repairedContent = data.choices[0].message.content;
 
         // Clean up potential markdown code blocks if the model wraps the output
-        return repairedContent.replace(/^```markdown\n/, '').replace(/^```\n/, '').replace(/\n```$/, '');
+        let finalContent = repairedContent.replace(/^```markdown\n/, '').replace(/^```\n/, '').replace(/\n```$/, '');
+
+        // Apply regex cleanup again just in case the model reintroduced them
+        return cleanupMarkdown(finalContent);
+
     } catch (error) {
         console.error('Error repairing paper notes:', error);
-        return content; // Fallback to original content
+        return processedContent; // Fallback to regex-cleaned content
     }
 };
