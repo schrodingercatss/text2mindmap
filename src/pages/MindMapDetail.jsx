@@ -4,10 +4,12 @@ import { getMindMapById, updateMindMap } from '../utils/storage';
 import MindMapViewer from '../components/MindMapViewer';
 import PaperReadingViewer from '../components/PaperReadingViewer';
 import { ArrowLeft, Edit3, Save, X, BookOpen, GitBranch } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 
 const MindMapDetail = () => {
     const { id } = useParams();
     const navigate = useNavigate();
+    const { user, session } = useAuth();
     const [mapData, setMapData] = useState(null);
     const [activeTab, setActiveTab] = useState('notes'); // 'notes' or 'mindmap'
     const [isEditing, setIsEditing] = useState(false);
@@ -18,7 +20,7 @@ const MindMapDetail = () => {
 
     useEffect(() => {
         const loadMap = async () => {
-            const map = await getMindMapById(id);
+            const map = await getMindMapById(id, session?.access_token, user?.id);
             if (map) {
                 setMapData(map);
                 setEditData(map.data || []);
@@ -39,7 +41,7 @@ const MindMapDetail = () => {
             }
         };
         loadMap();
-    }, [id, navigate]);
+    }, [id, navigate, session?.access_token, user?.id]);
 
     const handleStartEdit = () => {
         setEditData([...(mapData.data || [])]);
@@ -53,7 +55,7 @@ const MindMapDetail = () => {
             title: editTitle.trim() || mapData.title,
             data: editData,
             processSteps: editProcessSteps
-        });
+        }, session?.access_token, user?.id);
         if (updated) {
             setMapData(updated);
             setIsEditing(false);

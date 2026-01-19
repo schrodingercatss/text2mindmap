@@ -14,6 +14,7 @@ export const useAuth = () => {
 
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
+    const [session, setSession] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
@@ -21,10 +22,23 @@ export const AuthProvider = ({ children }) => {
         // Check active session
         const checkSession = async () => {
             try {
-                const { data: { session } } = await supabase.auth.getSession();
-                setUser(session?.user ?? null);
-                // Load settings if user is logged in
-                if (session?.user) {
+                const { data: { session: initialSession } } = await supabase.auth.getSession();
+
+                let effectiveSession = initialSession ?? null;
+                const expiresAtMs = effectiveSession?.expires_at ? effectiveSession.expires_at * 1000 : null;
+                const needsRefresh = expiresAtMs !== null && expiresAtMs <= Date.now() + 30000;
+
+                if (needsRefresh) {
+                    const { data, error: refreshError } = await supabase.auth.refreshSession();
+                    if (!refreshError) {
+                        effectiveSession = data.session ?? null;
+                    }
+                }
+
+                setSession(effectiveSession);
+                setUser(effectiveSession?.user ?? null);
+
+                if (effectiveSession?.user) {
                     await loadApiSettings();
                 }
             } catch (err) {
@@ -38,6 +52,7 @@ export const AuthProvider = ({ children }) => {
 
         // Listen for auth changes
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+            setSession(session ?? null);
             setUser(session?.user ?? null);
             setLoading(false);
             // Load settings when user logs in
@@ -91,6 +106,7 @@ export const AuthProvider = ({ children }) => {
             const { error } = await supabase.auth.signOut();
             if (error) throw error;
             setUser(null);
+            setSession(null);
         } catch (err) {
             setError(err.message);
         }
@@ -112,13 +128,14 @@ export const AuthProvider = ({ children }) => {
 
     const value = {
         user,
+        session,
         loading,
         error,
         signUp,
         signIn,
         signOut,
         resetPassword,
-        isAuthenticated: !!user,
+        isAuthenticated: !!session,
     };
 
     return (

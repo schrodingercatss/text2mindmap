@@ -7,7 +7,7 @@ import { useAuth } from '../contexts/AuthContext';
 
 const Home = () => {
     const navigate = useNavigate();
-    const { user, signOut, loading: authLoading } = useAuth();
+    const { user, session, signOut, loading: authLoading } = useAuth();
     const [maps, setMaps] = useState([]);
     const [loading, setLoading] = useState(false);
     const [loadingMessage, setLoadingMessage] = useState('');
@@ -29,13 +29,13 @@ const Home = () => {
         const loadMaps = async () => {
             setMapsLoading(true);
             console.log('Home - Loading maps, user:', user?.id);
-            const loadedMaps = await getMindMaps(user?.id);
+            const loadedMaps = await getMindMaps(user?.id, session?.access_token);
             console.log('Home - Loaded maps:', loadedMaps.length);
             setMaps(loadedMaps);
             setMapsLoading(false);
         };
         loadMaps();
-    }, [authLoading, user]);
+    }, [authLoading, user, session?.access_token]);
 
     const handleFileSelect = (event) => {
         const file = event.target.files[0];
@@ -238,9 +238,9 @@ const Home = () => {
                     fileType: fileType
                 };
 
-                const savedMap = await saveMindMap(newMap);
+                const savedMap = await saveMindMap(newMap, session?.access_token, user?.id);
                 setProgress(100);
-                const updatedMaps = await getMindMaps();
+                const updatedMaps = await getMindMaps(user?.id, session?.access_token);
                 setMaps(updatedMaps);
                 navigate(`/map/${savedMap.id}`);
             } catch (err) {
@@ -274,8 +274,8 @@ const Home = () => {
     const handleDelete = async (e, id) => {
         e.stopPropagation();
         if (window.confirm('Are you sure you want to delete this?')) {
-            await deleteMindMap(id);
-            const updatedMaps = await getMindMaps();
+            await deleteMindMap(id, session?.access_token, user?.id);
+            const updatedMaps = await getMindMaps(user?.id, session?.access_token);
             setMaps(updatedMaps);
         }
     };

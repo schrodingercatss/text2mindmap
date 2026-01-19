@@ -1,5 +1,6 @@
 import { DEFAULT_PAPER_READING_PROMPT } from './prompts';
 import { supabase } from '../lib/supabase';
+import { supabaseRestFetch } from '../lib/supabaseRest';
 import { encryptData, decryptData } from './crypto';
 
 const STORAGE_KEYS = {
@@ -359,7 +360,22 @@ export const saveApiSettings = async (settings) => {
 
 const COLORS = ['blue', 'green', 'orange', 'purple', 'pink', 'cyan', 'emerald', 'indigo'];
 
-export const saveMindMap = async (mindMap) => {
+const mapMindMapRow = (map) => ({
+  id: map.id,
+  title: map.title,
+  originalFilename: map.original_filename,
+  data: map.data,
+  processSteps: map.process_steps,
+  paperNotes: map.paper_notes,
+  mode: map.mode,
+  modelName: map.model_name,
+  fileType: map.file_type,
+  iconColor: map.icon_color,
+  createdAt: map.created_at,
+  updatedAt: map.updated_at,
+});
+
+export const saveMindMap = async (mindMap, accessToken = null, userId = null) => {
   const settings = getApiSettings();
   let iconColor = 'green';
   if (settings.iconColorPreference === 'random') {
@@ -369,9 +385,8 @@ export const saveMindMap = async (mindMap) => {
   }
 
   try {
-    const user = await getCurrentUser();
-    if (!user) {
-      // Not logged in, use localStorage
+    const effectiveUserId = userId || (await getCurrentUser())?.id;
+    if (!effectiveUserId) {
       const maps = JSON.parse(localStorage.getItem(STORAGE_KEYS.MIND_MAPS) || '[]');
       const newMap = {
         ...mindMap,
@@ -384,9 +399,8 @@ export const saveMindMap = async (mindMap) => {
       return newMap;
     }
 
-    // Save to Supabase
     const dbData = {
-      user_id: user.id,
+      user_id: effectiveUserId,
       title: mindMap.title,
       original_filename: mindMap.originalFilename,
       data: mindMap.data,
@@ -397,6 +411,16 @@ export const saveMindMap = async (mindMap) => {
       file_type: mindMap.fileType,
       icon_color: iconColor,
     };
+
+    if (accessToken) {
+      const inserted = await supabaseRestFetch('/rest/v1/mind_maps?select=*', {
+        accessToken,
+        method: 'POST',
+        body: dbData,
+        headers: { Prefer: 'return=representation' },
+      });
+      return mapMindMapRow(Array.isArray(inserted) ? inserted[0] : inserted);
+    }
 
     const { data, error } = await supabase
       .from('mind_maps')
@@ -409,26 +433,14 @@ export const saveMindMap = async (mindMap) => {
       throw error;
     }
 
-    return {
-      id: data.id,
-      title: data.title,
-      originalFilename: data.original_filename,
-      data: data.data,
-      processSteps: data.process_steps,
-      paperNotes: data.paper_notes,
-      mode: data.mode,
-      modelName: data.model_name,
-      fileType: data.file_type,
-      iconColor: data.icon_color,
-      createdAt: data.created_at,
-    };
+    return mapMindMapRow(data);
   } catch (err) {
     console.error('Error in saveMindMap:', err);
     throw err;
   }
 };
 
-export const getMindMaps = async (userId = null) => {
+export const getMindMaps = async (userId = null, accessToken = null) => {
   try {
     // Use provided userId or fetch from supabase
     let effectiveUserId = userId;
@@ -442,6 +454,16 @@ export const getMindMaps = async (userId = null) => {
       // Not logged in, use localStorage
       const maps = localStorage.getItem(STORAGE_KEYS.MIND_MAPS);
       return maps ? JSON.parse(maps) : [];
+    }
+
+    if (accessToken) {
+      const params = new URLSearchParams({
+        select: '*',
+        user_id: `eq.${effectiveUserId}`,
+        order: 'created_at.desc',
+      });
+      const rows = await supabaseRestFetch(`/rest/v1/mind_maps?${params.toString()}`, { accessToken });
+      return (rows || []).map(mapMindMapRow);
     }
 
     const session = await refreshSessionIfNeeded();
@@ -500,39 +522,39 @@ export const getMindMaps = async (userId = null) => {
       return [];
     }
 
-    return data.map(map => ({
-      id: map.id,
-      title: map.title,
-      originalFilename: map.original_filename,
-      data: map.data,
-      processSteps: map.process_steps,
-      paperNotes: map.paper_notes,
-      mode: map.mode,
-      modelName: map.model_name,
-      fileType: map.file_type,
-      iconColor: map.icon_color,
-      createdAt: map.created_at,
-    }));
+    return data.map(mapMindMapRow);
   } catch (err) {
     console.error('Error in getMindMaps:', err);
     return [];
   }
 };
 
-export const getMindMapById = async (id) => {
+export const getMindMapById = async (id, accessToken = null, userId = null) => {
   try {
-    const user = await getCurrentUser();
-    if (!user) {
+    const effectiveUserId = userId || (await getCurrentUser())?.id;
+    if (!effectiveUserId) {
       // Not logged in, use localStorage
       const maps = JSON.parse(localStorage.getItem(STORAGE_KEYS.MIND_MAPS) || '[]');
       return maps.find(m => m.id === id) || null;
+    }
+
+    if (accessToken) {
+      const params = new URLSearchParams({
+        select: '*',
+        id: `eq.${id}`,
+        user_id: `eq.${effectiveUserId}`,
+        limit: '1',
+      });
+      const rows = await supabaseRestFetch(`/rest/v1/mind_maps?${params.toString()}`, { accessToken });
+      const row = Array.isArray(rows) ? rows[0] : rows;
+      return row ? mapMindMapRow(row) : null;
     }
 
     const { data, error } = await supabase
       .from('mind_maps')
       .select('*')
       .eq('id', id)
-      .eq('user_id', user.id)
+      .eq('user_id', effectiveUserId)
       .single();
 
     if (error) {
@@ -540,29 +562,17 @@ export const getMindMapById = async (id) => {
       return null;
     }
 
-    return {
-      id: data.id,
-      title: data.title,
-      originalFilename: data.original_filename,
-      data: data.data,
-      processSteps: data.process_steps,
-      paperNotes: data.paper_notes,
-      mode: data.mode,
-      modelName: data.model_name,
-      fileType: data.file_type,
-      iconColor: data.icon_color,
-      createdAt: data.created_at,
-    };
+    return mapMindMapRow(data);
   } catch (err) {
     console.error('Error in getMindMapById:', err);
     return null;
   }
 };
 
-export const deleteMindMap = async (id) => {
+export const deleteMindMap = async (id, accessToken = null, userId = null) => {
   try {
-    const user = await getCurrentUser();
-    if (!user) {
+    const effectiveUserId = userId || (await getCurrentUser())?.id;
+    if (!effectiveUserId) {
       // Not logged in, use localStorage
       const maps = JSON.parse(localStorage.getItem(STORAGE_KEYS.MIND_MAPS) || '[]');
       const newMaps = maps.filter(m => m.id !== id);
@@ -570,11 +580,23 @@ export const deleteMindMap = async (id) => {
       return true;
     }
 
+    if (accessToken) {
+      const params = new URLSearchParams({
+        id: `eq.${id}`,
+        user_id: `eq.${effectiveUserId}`,
+      });
+      await supabaseRestFetch(`/rest/v1/mind_maps?${params.toString()}`, {
+        accessToken,
+        method: 'DELETE',
+      });
+      return true;
+    }
+
     const { error } = await supabase
       .from('mind_maps')
       .delete()
       .eq('id', id)
-      .eq('user_id', user.id);
+      .eq('user_id', effectiveUserId);
 
     if (error) {
       console.error('Error deleting mind map:', error);
@@ -588,10 +610,10 @@ export const deleteMindMap = async (id) => {
   }
 };
 
-export const updateMindMap = async (id, updates) => {
+export const updateMindMap = async (id, updates, accessToken = null, userId = null) => {
   try {
-    const user = await getCurrentUser();
-    if (!user) {
+    const effectiveUserId = userId || (await getCurrentUser())?.id;
+    if (!effectiveUserId) {
       // Not logged in, use localStorage
       const maps = JSON.parse(localStorage.getItem(STORAGE_KEYS.MIND_MAPS) || '[]');
       const index = maps.findIndex(m => m.id === id);
@@ -609,11 +631,27 @@ export const updateMindMap = async (id, updates) => {
     if (updates.processSteps !== undefined) dbUpdates.process_steps = updates.processSteps;
     if (updates.paperNotes !== undefined) dbUpdates.paper_notes = updates.paperNotes;
 
+    if (accessToken) {
+      const params = new URLSearchParams({
+        id: `eq.${id}`,
+        user_id: `eq.${effectiveUserId}`,
+        select: '*',
+      });
+      const rows = await supabaseRestFetch(`/rest/v1/mind_maps?${params.toString()}`, {
+        accessToken,
+        method: 'PATCH',
+        body: dbUpdates,
+        headers: { Prefer: 'return=representation' },
+      });
+      const row = Array.isArray(rows) ? rows[0] : rows;
+      return row ? mapMindMapRow(row) : null;
+    }
+
     const { data, error } = await supabase
       .from('mind_maps')
       .update(dbUpdates)
       .eq('id', id)
-      .eq('user_id', user.id)
+      .eq('user_id', effectiveUserId)
       .select()
       .single();
 
@@ -622,14 +660,7 @@ export const updateMindMap = async (id, updates) => {
       throw error;
     }
 
-    return {
-      id: data.id,
-      title: data.title,
-      data: data.data,
-      processSteps: data.process_steps,
-      paperNotes: data.paper_notes,
-      createdAt: data.created_at,
-    };
+    return mapMindMapRow(data);
   } catch (err) {
     console.error('Error in updateMindMap:', err);
     throw err;
