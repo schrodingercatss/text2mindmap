@@ -402,11 +402,18 @@ export const getMindMaps = async (userId = null) => {
       return maps ? JSON.parse(maps) : [];
     }
 
-    const { data, error } = await supabase
+    // Add timeout to prevent hanging
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Query timeout after 10s')), 10000)
+    );
+
+    const queryPromise = supabase
       .from('mind_maps')
       .select('*')
       .eq('user_id', effectiveUserId)
       .order('created_at', { ascending: false });
+
+    const { data, error } = await Promise.race([queryPromise, timeoutPromise]);
 
     console.log('getMindMaps - Supabase response:', { dataLength: data?.length, error });
 
