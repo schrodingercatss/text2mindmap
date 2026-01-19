@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Settings as SettingsIcon, FileText, Trash2, Loader, Search, Cpu, BookOpen, GitBranch, X } from 'lucide-react';
 import { saveMindMap, getMindMaps, deleteMindMap, getApiSettings } from '../utils/storage';
-import { generateMindMapFromText, generatePaperReading } from '../services/api';
+import { generateMindMapFromText, generatePaperReading, repairPaperNotes } from '../services/api';
 
 const Home = () => {
     const navigate = useNavigate();
@@ -98,6 +98,12 @@ const Home = () => {
                     finalTitle = generatedData.title?.trim() || fallbackTitle;
                 } else if (mode === 'paper') {
                     paperNotesContent = await generatePaperReading(content, fileType);
+                }
+
+                // Step 2: Repair formatting for paper notes
+                if (paperNotesContent) {
+                    setLoadingMessage('Refining formatting...');
+                    paperNotesContent = await repairPaperNotes(paperNotesContent);
                 }
 
                 const newMap = {

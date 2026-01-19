@@ -1,4 +1,5 @@
 import { getApiSettings } from '../utils/storage';
+import { REPAIR_FORMAT_PROMPT } from '../utils/prompts';
 
 export const generateMindMapFromText = async (text, fileType = 'txt') => {
     const { apiKey, baseUrl, modelName, systemPrompt, pdfSystemPrompt, outputLanguage } = getApiSettings();
@@ -162,5 +163,52 @@ export const generatePaperReading = async (text, fileType = 'pdf') => {
     } catch (error) {
         console.error('Error generating paper reading notes:', error);
         throw error;
+    }
+};
+
+// Repair markdown and LaTeX formatting
+export const repairPaperNotes = async (content) => {
+    const { apiKey, baseUrl, modelName } = getApiSettings();
+
+    if (!apiKey) {
+        throw new Error('API Key is missing.');
+    }
+
+    try {
+        let url = baseUrl.replace(/\/$/, '');
+        if (!url.endsWith('/chat/completions')) {
+            url = `${url}/chat/completions`;
+        }
+
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`,
+            },
+            body: JSON.stringify({
+                model: modelName || 'gpt-4o', // Use the faster/standard model for repair
+                messages: [
+                    { role: 'system', content: REPAIR_FORMAT_PROMPT },
+                    { role: 'user', content: content },
+                ],
+                temperature: 0.1, // Low temperature for deterministic formatting
+            }),
+        });
+
+        if (!response.ok) {
+            // If repair fails, just return original content to avoid breaking the flow
+            console.warn('Repair request failed, returning original content.');
+            return content;
+        }
+
+        const data = await response.json();
+        const repairedContent = data.choices[0].message.content;
+
+        // Clean up potential markdown code blocks if the model wraps the output
+        return repairedContent.replace(/^```markdown\n/, '').replace(/^```\n/, '').replace(/\n```$/, '');
+    } catch (error) {
+        console.error('Error repairing paper notes:', error);
+        return content; // Fallback to original content
     }
 };

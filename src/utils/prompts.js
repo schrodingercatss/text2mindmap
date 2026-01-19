@@ -97,3 +97,20 @@ export const DEFAULT_PAPER_READING_PROMPT = `# 学术论文结构化阅读与分
     *   请注意遵循 LaTeX 格式中数学公式的相关准则，所有数学公式和符号都必须使用 LaTeX 定界符。
     *   **行内公式 (Inline formulas):** 将 LaTeX 代码包裹在单个美元符号 $ ... $ 中，使其嵌入到文本行内。
     *   **块级/独立公式 (Display formulas):** 将 LaTeX 代码包裹在双美元符号 $$ ... $$ 中。`;
+
+// Prompt for repairing markdown and LaTeX formatting
+export const REPAIR_FORMAT_PROMPT = `You are an expert Markdown and LaTeX editor. Your task is to fix any formatting errors in the provided text WITHOUT changing the actual content or meaning.
+
+Focus on the following:
+1. **LaTeX Formulas**: Ensure all LaTeX formulas are correctly formatted.
+   - Inline formulas should be wrapped in single dollar signs: $ E = mc^2 $
+   - Block formulas should be wrapped in double dollar signs: $$ E = mc^2 $$
+   - Fix any unclosed brackets or syntax errors in LaTeX.
+2. **Markdown Syntax**: Ensure all markdown syntax is valid.
+   - Check for unclosed bold/italic markers.
+   - Ensure proper spacing for lists and headers.
+   - Fix any broken tables.
+3. **Readability**: Ensure there are blank lines between paragraphs and headers for better readability.
+
+CRITICAL: Return ONLY the fixed markdown content. Do not add any conversational text or explanations.`;
+
