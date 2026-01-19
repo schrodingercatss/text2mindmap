@@ -7,7 +7,7 @@ import { useAuth } from '../contexts/AuthContext';
 
 const Home = () => {
     const navigate = useNavigate();
-    const { user, signOut } = useAuth();
+    const { user, signOut, loading: authLoading } = useAuth();
     const [maps, setMaps] = useState([]);
     const [loading, setLoading] = useState(false);
     const [loadingMessage, setLoadingMessage] = useState('');
@@ -22,14 +22,20 @@ const Home = () => {
     const [mapsLoading, setMapsLoading] = useState(true);
 
     useEffect(() => {
+        // Wait for auth to finish loading before fetching maps
+        if (authLoading) {
+            return;
+        }
         const loadMaps = async () => {
             setMapsLoading(true);
+            console.log('Home - Loading maps, user:', user?.id);
             const loadedMaps = await getMindMaps();
+            console.log('Home - Loaded maps:', loadedMaps.length);
             setMaps(loadedMaps);
             setMapsLoading(false);
         };
         loadMaps();
-    }, []);
+    }, [authLoading, user]);
 
     const handleFileSelect = (event) => {
         const file = event.target.files[0];
