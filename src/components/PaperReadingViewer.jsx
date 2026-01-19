@@ -27,19 +27,19 @@ const PaperReadingViewer = ({ title, content }) => {
     // Custom components for ReactMarkdown to enhance styling
     const components = {
         h1: ({ node, ...props }) => (
-            <h1 className="text-3xl font-extrabold text-slate-900 mt-10 mb-6 pb-4 border-b-2 border-slate-100 flex items-center gap-3" {...props}>
+            <h1 className="text-3xl font-extrabold text-slate-900 mt-16 mb-8 pb-4 border-b-2 border-slate-100 flex items-center gap-3" {...props}>
                 <span className="w-2 h-8 bg-blue-600 rounded-full inline-block"></span>
                 {props.children}
             </h1>
         ),
         h2: ({ node, ...props }) => (
-            <h2 className="text-2xl font-bold text-slate-800 mt-8 mb-4 flex items-center gap-2" {...props}>
+            <h2 className="text-2xl font-bold text-slate-800 mt-12 mb-6 flex items-center gap-2" {...props}>
                 <span className="text-blue-500 opacity-50">#</span>
                 {props.children}
             </h2>
         ),
         h3: ({ node, ...props }) => (
-            <h3 className="text-xl font-bold text-slate-700 mt-6 mb-3" {...props} />
+            <h3 className="text-xl font-bold text-slate-700 mt-8 mb-4" {...props} />
         ),
         blockquote: ({ node, ...props }) => (
             <div className="my-6 p-6 bg-blue-50/50 border-l-4 border-blue-500 rounded-r-xl relative group">
