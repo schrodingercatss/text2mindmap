@@ -100,7 +100,9 @@ const PaperReadingViewer = ({ title, content }) => {
             return (
                 <p className={`my-4 text-slate-700 leading-7 ${hasBlockMath ? 'overflow-x-auto py-2' : ''}`} {...props} />
             );
-        }
+        },
+        // Hide markdown horizontal rules (---) since we use border-t on headers
+        hr: () => null,
     };
 
     return (
