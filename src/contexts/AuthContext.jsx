@@ -58,6 +58,9 @@ export const AuthProvider = ({ children }) => {
             const { data, error } = await supabase.auth.signUp({
                 email,
                 password,
+                options: {
+                    emailRedirectTo: window.location.origin,
+                },
             });
             if (error) throw error;
             return { data, error: null };
