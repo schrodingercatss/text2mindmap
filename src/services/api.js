@@ -63,6 +63,10 @@ export const generateMindMapFromText = async (text, fileType = 'txt') => {
             userContent = text;
         }
 
+        // Create a controller for timeout (5 minutes for large documents)
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 300000);
+
         const response = await fetch(url, {
             method: 'POST',
             headers: {
@@ -77,7 +81,10 @@ export const generateMindMapFromText = async (text, fileType = 'txt') => {
                 ],
                 temperature: 0.2,
             }),
+            signal: controller.signal
         });
+
+        clearTimeout(timeoutId);
 
         const contentType = response.headers.get('content-type');
         if (!contentType || !contentType.includes('application/json')) {
@@ -162,6 +169,10 @@ export const generatePaperReading = async (text, fileType = 'pdf') => {
             userContent = text;
         }
 
+        // Create a controller for timeout (5 minutes for large documents)
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 300000);
+
         const response = await fetch(url, {
             method: 'POST',
             headers: {
@@ -176,7 +187,10 @@ export const generatePaperReading = async (text, fileType = 'pdf') => {
                 ],
                 temperature: 0.3,
             }),
+            signal: controller.signal
         });
+
+        clearTimeout(timeoutId);
 
         const contentType = response.headers.get('content-type');
         if (!contentType || !contentType.includes('application/json')) {
