@@ -297,6 +297,7 @@ export const saveApiSettings = async (settings) => {
 
     if (error) {
       console.error('Error saving settings to Supabase:', error);
+      console.error('Error details:', error.message, error.details, error.hint);
       // Still saved to cache/localStorage
     }
 

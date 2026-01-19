@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS user_settings (
     model_name TEXT DEFAULT 'gpt-4o',
     paper_reading_model_name TEXT DEFAULT 'gemini-2.5-pro-thinking',
     system_prompt TEXT,
+    pdf_system_prompt TEXT,
     paper_reading_prompt TEXT,
     output_language TEXT DEFAULT 'zh',
     icon_color_preference TEXT DEFAULT 'random',
