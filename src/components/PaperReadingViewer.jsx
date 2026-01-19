@@ -132,7 +132,7 @@ const PaperReadingViewer = ({ title, content }) => {
                             <BookOpen size={32} />
                         </div>
                         {title && (
-                            <h1 className="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight leading-tight mb-4 bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-700">
+                            <h1 className="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight leading-tight mb-4 pb-2 bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-700">
                                 {title}
                             </h1>
                         )}

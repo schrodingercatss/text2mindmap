@@ -75,9 +75,10 @@ const MindMapViewer = ({ data, processSteps, title, isEditing, onDataChange, onT
                 <div className="flex justify-end mb-6">
                     <button
                         onClick={handleExport}
-                        className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg font-medium shadow-lg shadow-emerald-200 transition-all"
+                        className="flex items-center gap-2 bg-white/80 backdrop-blur-sm hover:bg-white text-slate-700 px-5 py-2.5 rounded-full font-medium shadow-sm hover:shadow-md border border-slate-200 transition-all transform hover:-translate-y-0.5"
                     >
-                        <Download size={18} /> Export Image
+                        <Download size={18} className="text-blue-600" />
+                        <span className="text-sm">Export Image</span>
                     </button>
                 </div>
 
