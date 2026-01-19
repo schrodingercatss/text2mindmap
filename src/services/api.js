@@ -166,15 +166,29 @@ export const generatePaperReading = async (text, fileType = 'pdf') => {
     }
 };
 
-// Helper to clean up markdown regex-based
+// Helper to clean up markdown regex-based (FALLBACK ONLY)
+// This is used as a last resort when LLM repair fails or times out
 const cleanupMarkdown = (text) => {
     if (!text) return text;
+
+    let result = text;
+
+    // Normalize line endings to \n
+    result = result.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+
     // Fix: Convert single-line code blocks to inline code
-    // Matches ```language\ncontent\n``` where content is a single line
-    // Improved regex to handle optional spaces and language tags correctly
-    return text.replace(/```[ \t]*(?:[\w-]*)?[ \t]*\n([^\n]+?)\n[ \t]*```/g, (match, content) => {
-        return `\`${content.trim()}\``;
+    // Handles: ```language\ncontent\n``` or ``` \n content \n ```
+    // The regex is more flexible to handle various spacing patterns
+    result = result.replace(/```[ \t]*[\w-]*[ \t]*\n\s*([^\n]+?)\s*\n\s*```/g, (match, content) => {
+        const trimmed = content.trim();
+        // Only convert if content looks like a single word/short phrase (not actual code)
+        if (trimmed.length < 100 && !trimmed.includes(';') && !trimmed.includes('{') && !trimmed.includes('(')) {
+            return `\`${trimmed}\``;
+        }
+        return match; // Keep as code block if it looks like actual code
     });
+
+    return result;
 };
 
 // Repair markdown and LaTeX formatting
@@ -185,9 +199,8 @@ export const repairPaperNotes = async (content) => {
         throw new Error('API Key is missing.');
     }
 
-    // First, apply regex cleanup to the original content
-    // This catches the obvious "single word code block" issue even if the LLM fails
-    let processedContent = cleanupMarkdown(content);
+    // Normalize line endings first
+    const normalizedContent = content.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 
     try {
         let url = baseUrl.replace(/\/$/, '');
@@ -195,9 +208,9 @@ export const repairPaperNotes = async (content) => {
             url = `${url}/chat/completions`;
         }
 
-        // Create a controller for timeout
+        // Create a controller for timeout (3 minutes)
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 180000); // 3 minute timeout
+        const timeoutId = setTimeout(() => controller.abort(), 180000);
 
         const response = await fetch(url, {
             method: 'POST',
@@ -209,7 +222,7 @@ export const repairPaperNotes = async (content) => {
                 model: modelName || 'gpt-4o',
                 messages: [
                     { role: 'system', content: REPAIR_FORMAT_PROMPT },
-                    { role: 'user', content: processedContent },
+                    { role: 'user', content: normalizedContent }, // Send original content to LLM
                 ],
                 temperature: 0.1,
             }),
@@ -219,21 +232,25 @@ export const repairPaperNotes = async (content) => {
         clearTimeout(timeoutId);
 
         if (!response.ok) {
-            console.warn('Repair request failed, returning regex-cleaned content.');
-            return processedContent;
+            // LLM request failed, use regex fallback on ORIGINAL content
+            console.warn('Repair request failed, using regex fallback.');
+            return cleanupMarkdown(normalizedContent);
         }
 
         const data = await response.json();
         const repairedContent = data.choices[0].message.content;
 
-        // Clean up potential markdown code blocks if the model wraps the output
-        let finalContent = repairedContent.replace(/^```markdown\n/, '').replace(/^```\n/, '').replace(/\n```$/, '');
+        // Clean up potential markdown wrapper if the model wraps the output
+        let finalContent = repairedContent
+            .replace(/^```markdown\n/, '')
+            .replace(/^```\n/, '')
+            .replace(/\n```$/, '');
 
-        // Apply regex cleanup again just in case the model reintroduced them
-        return cleanupMarkdown(finalContent);
+        return finalContent;
 
     } catch (error) {
-        console.error('Error repairing paper notes:', error);
-        return processedContent; // Fallback to regex-cleaned content
+        // LLM timed out or errored, use regex fallback on ORIGINAL content
+        console.error('Error repairing paper notes (using regex fallback):', error);
+        return cleanupMarkdown(normalizedContent);
     }
 };
