@@ -106,13 +106,21 @@ export const generateMindMapFromText = async (text, fileType = 'txt') => {
 
 // Generate paper reading notes (returns markdown)
 export const generatePaperReading = async (text, fileType = 'pdf') => {
-    const { apiKey, baseUrl, paperReadingModelName, paperReadingPrompt } = getApiSettings();
+    const { apiKey, baseUrl, paperReadingModelName, paperReadingPrompt, outputLanguage } = getApiSettings();
 
     if (!apiKey) {
         throw new Error('API Key is missing. Please configure it in Settings.');
     }
 
-    const promptToUse = paperReadingPrompt || 'Analyze this academic paper and provide detailed notes in markdown format.';
+    // Get base prompt
+    let basePrompt = paperReadingPrompt || 'Analyze this academic paper and provide detailed notes in markdown format.';
+
+    // Append language instruction
+    const langInstruction = outputLanguage === 'en'
+        ? '\n\nIMPORTANT: Output all content in English.'
+        : '\n\nIMPORTANT: 请使用中文输出所有内容。';
+
+    const promptToUse = basePrompt + langInstruction;
 
     try {
         // Smart URL construction
