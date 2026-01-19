@@ -171,7 +171,10 @@ const cleanupMarkdown = (text) => {
     if (!text) return text;
     // Fix: Convert single-line code blocks to inline code
     // Matches ```language\ncontent\n``` where content is a single line
-    return text.replace(/```(?:[\w-]+)?\n([^\n]+?)\n```/g, '`$1`');
+    // Improved regex to handle optional spaces and language tags correctly
+    return text.replace(/```[ \t]*(?:[\w-]*)?[ \t]*\n([^\n]+?)\n[ \t]*```/g, (match, content) => {
+        return `\`${content.trim()}\``;
+    });
 };
 
 // Repair markdown and LaTeX formatting

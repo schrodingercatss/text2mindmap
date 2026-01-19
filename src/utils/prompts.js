@@ -108,7 +108,7 @@ Focus on the following:
    - Fix any unclosed brackets or syntax errors in LaTeX.
 2. **Markdown Syntax**: Ensure all markdown syntax is valid.
    - **Fix Fragmented Lists**: If a list is broken into multiple lines or blocks incorrectly, merge them into a proper list.
-   - **Code Blocks vs Inline**: Do NOT use triple backtick code blocks for single words or short phrases inside a sentence or list. Use inline code (single backtick) instead.
+   - **Code Blocks vs Inline**: STRICTLY do NOT use triple backtick code blocks for single words, short phrases, or entities (like "Django", "SWE-bench", "123"). Use inline code (single backtick) instead.
      - BAD: 
        * \`\`\`
          django
