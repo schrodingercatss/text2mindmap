@@ -176,9 +176,12 @@ const isAuthenticated = async () => {
 
 const getCurrentUser = async () => {
   try {
+    console.log('getCurrentUser - fetching...');
     const { data: { user } } = await supabase.auth.getUser();
+    console.log('getCurrentUser - result:', user?.id || 'null');
     return user;
-  } catch {
+  } catch (err) {
+    console.error('getCurrentUser - error:', err);
     return null;
   }
 };
