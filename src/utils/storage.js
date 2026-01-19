@@ -402,39 +402,61 @@ export const getMindMaps = async (userId = null) => {
       return maps ? JSON.parse(maps) : [];
     }
 
-    // Add timeout to prevent hanging
-    const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('Query timeout after 10s')), 10000)
-    );
+    // Check if we have a valid session first
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    console.log('getMindMaps - Session:', session ? 'valid' : 'null', sessionError?.message || '');
 
-    const queryPromise = supabase
-      .from('mind_maps')
-      .select('*')
-      .eq('user_id', effectiveUserId)
-      .order('created_at', { ascending: false });
-
-    const { data, error } = await Promise.race([queryPromise, timeoutPromise]);
-
-    console.log('getMindMaps - Supabase response:', { dataLength: data?.length, error });
-
-    if (error) {
-      console.error('Error fetching mind maps:', error);
-      return [];
+    if (sessionError || !session) {
+      console.warn('No valid session, falling back to localStorage');
+      const maps = localStorage.getItem(STORAGE_KEYS.MIND_MAPS);
+      return maps ? JSON.parse(maps) : [];
     }
 
-    return data.map(map => ({
-      id: map.id,
-      title: map.title,
-      originalFilename: map.original_filename,
-      data: map.data,
-      processSteps: map.process_steps,
-      paperNotes: map.paper_notes,
-      mode: map.mode,
-      modelName: map.model_name,
-      fileType: map.file_type,
-      iconColor: map.icon_color,
-      createdAt: map.created_at,
-    }));
+    // Use AbortController for proper timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      console.log('getMindMaps - Aborting due to timeout');
+      controller.abort();
+    }, 10000);
+
+    try {
+      const { data, error } = await supabase
+        .from('mind_maps')
+        .select('*')
+        .eq('user_id', effectiveUserId)
+        .order('created_at', { ascending: false })
+        .abortSignal(controller.signal);
+
+      clearTimeout(timeoutId);
+      console.log('getMindMaps - Result:', { count: data?.length, error: error?.message });
+
+      if (error) {
+        console.error('Error fetching mind maps:', error);
+        return [];
+      }
+
+      return data.map(map => ({
+        id: map.id,
+        title: map.title,
+        originalFilename: map.original_filename,
+        data: map.data,
+        processSteps: map.process_steps,
+        paperNotes: map.paper_notes,
+        mode: map.mode,
+        modelName: map.model_name,
+        fileType: map.file_type,
+        iconColor: map.icon_color,
+        createdAt: map.created_at,
+      }));
+    } catch (queryError) {
+      clearTimeout(timeoutId);
+      if (queryError.name === 'AbortError') {
+        console.error('Query aborted due to timeout');
+      } else {
+        console.error('Query error:', queryError);
+      }
+      return [];
+    }
   } catch (err) {
     console.error('Error in getMindMaps:', err);
     return [];
