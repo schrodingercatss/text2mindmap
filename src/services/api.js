@@ -9,7 +9,7 @@ export const generateMindMapFromText = async (text, fileType = 'txt') => {
     }
 
     // Choose the appropriate prompt based on file type
-    let basePrompt = fileType === 'pdf'
+    let basePrompt = fileType === 'pdf' || fileType === 'image'
         ? (pdfSystemPrompt || systemPrompt || 'Analyze this document and return a JSON mind map.')
         : (systemPrompt || 'Analyze this meeting transcript and return a JSON mind map.');
 
@@ -42,6 +42,20 @@ export const generateMindMapFromText = async (text, fileType = 'txt') => {
                 {
                     type: 'text',
                     text: 'Please analyze this PDF document and generate a mind map structure.'
+                }
+            ];
+        } else if (fileType === 'image') {
+            // For images: send as image_url
+            userContent = [
+                {
+                    type: 'image_url',
+                    image_url: {
+                        url: `data:image/png;base64,${text}`
+                    }
+                },
+                {
+                    type: 'text',
+                    text: 'Please analyze this image and generate a mind map structure based on its content.'
                 }
             ];
         } else {
@@ -121,6 +135,19 @@ export const generatePaperReading = async (text, fileType = 'pdf') => {
                 {
                     type: 'text',
                     text: '请分析这篇学术论文并按照框架生成详细的阅读笔记。'
+                }
+            ];
+        } else if (fileType === 'image') {
+            userContent = [
+                {
+                    type: 'image_url',
+                    image_url: {
+                        url: `data:image/png;base64,${text}`
+                    }
+                },
+                {
+                    type: 'text',
+                    text: '请分析这张图片的内容并生成详细的阅读笔记。'
                 }
             ];
         } else {

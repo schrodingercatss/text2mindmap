@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Settings as SettingsIcon, FileText, Trash2, Loader, Search, Cpu, BookOpen, GitBranch, X, ClipboardPaste } from 'lucide-react';
+import { Settings as SettingsIcon, FileText, Trash2, Loader, Search, Cpu, BookOpen, GitBranch, X, ClipboardPaste, Image } from 'lucide-react';
 import { saveMindMap, getMindMaps, deleteMindMap, getApiSettings } from '../utils/storage';
 import { generateMindMapFromText, generatePaperReading, repairPaperNotes } from '../services/api';
 
@@ -16,6 +16,7 @@ const Home = () => {
     const [pendingFile, setPendingFile] = useState(null);
     const [showPasteModal, setShowPasteModal] = useState(false);
     const [pasteContent, setPasteContent] = useState('');
+    const [pasteImage, setPasteImage] = useState(null); // { base64: string, type: string }
 
     useEffect(() => {
         setMaps(getMindMaps());
@@ -42,35 +43,90 @@ const Home = () => {
 
     const handlePasteFromClipboard = async () => {
         try {
-            const text = await navigator.clipboard.readText();
-            if (text && text.trim()) {
-                setPasteContent(text);
-                setShowPasteModal(true);
-            } else {
-                setError('Clipboard is empty or contains no text.');
+            // Try to read clipboard items (supports images)
+            const clipboardItems = await navigator.clipboard.read();
+
+            for (const item of clipboardItems) {
+                // Check for image types
+                const imageType = item.types.find(type => type.startsWith('image/'));
+                if (imageType) {
+                    const blob = await item.getType(imageType);
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const base64 = e.target.result;
+                        setPasteImage({ base64, type: imageType });
+                        setPasteContent('');
+                        setShowPasteModal(true);
+                    };
+                    reader.readAsDataURL(blob);
+                    return;
+                }
+
+                // Check for text
+                if (item.types.includes('text/plain')) {
+                    const blob = await item.getType('text/plain');
+                    const text = await blob.text();
+                    if (text && text.trim()) {
+                        setPasteContent(text);
+                        setPasteImage(null);
+                        setShowPasteModal(true);
+                        return;
+                    }
+                }
             }
+
+            setError('Clipboard is empty or contains unsupported content.');
         } catch (err) {
-            // Fallback: show modal with empty textarea for manual paste
-            setPasteContent('');
-            setShowPasteModal(true);
+            // Fallback: try readText for older browsers
+            try {
+                const text = await navigator.clipboard.readText();
+                if (text && text.trim()) {
+                    setPasteContent(text);
+                    setPasteImage(null);
+                    setShowPasteModal(true);
+                } else {
+                    // Show modal for manual paste
+                    setPasteContent('');
+                    setPasteImage(null);
+                    setShowPasteModal(true);
+                }
+            } catch (e) {
+                // Show modal for manual paste
+                setPasteContent('');
+                setPasteImage(null);
+                setShowPasteModal(true);
+            }
         }
     };
 
     const handlePasteSubmit = () => {
-        if (!pasteContent.trim()) {
+        if (pasteImage) {
+            // Handle image paste - extract base64 data without the data URL prefix
+            const base64Data = pasteImage.base64.split(',')[1];
+            const virtualFile = {
+                name: 'Pasted Image',
+                type: 'image',
+                content: base64Data,
+                mimeType: pasteImage.type
+            };
+            setPendingFile(virtualFile);
+            setShowPasteModal(false);
+            setPasteImage(null);
+            setShowModeModal(true);
+        } else if (pasteContent.trim()) {
+            // Handle text paste
+            const virtualFile = {
+                name: 'Pasted Content.txt',
+                type: 'text',
+                content: pasteContent.trim()
+            };
+            setPendingFile(virtualFile);
+            setShowPasteModal(false);
+            setPasteContent('');
+            setShowModeModal(true);
+        } else {
             setError('Please paste some content.');
-            return;
         }
-        // Create a virtual file-like object
-        const virtualFile = {
-            name: 'Pasted Content.txt',
-            type: 'text',
-            content: pasteContent.trim()
-        };
-        setPendingFile(virtualFile);
-        setShowPasteModal(false);
-        setPasteContent('');
-        setShowModeModal(true);
     };
 
     const handleModeSelect = async (mode) => {
@@ -93,7 +149,11 @@ const Home = () => {
                 let content;
                 let fileType;
 
-                if (isPdf) {
+                // Check for virtual file type first
+                if (e.virtualFileType) {
+                    content = e.target.result;
+                    fileType = e.virtualFileType;
+                } else if (isPdf) {
                     const base64 = e.target.result.split(',')[1];
                     content = base64;
                     fileType = 'pdf';
@@ -178,9 +238,15 @@ const Home = () => {
 
         // Handle virtual file (from paste) vs real file
         if (isVirtualFile) {
+            // Determine file type for virtual files
+            let virtualFileType = 'txt';
+            if (file.type === 'image') {
+                virtualFileType = 'image';
+            }
             // For virtual files, directly trigger the onload logic with the content
             reader.onload({
-                target: { result: file.content }
+                target: { result: file.content },
+                virtualFileType: virtualFileType
             });
         } else if (isPdf) {
             reader.readAsDataURL(file);
@@ -440,11 +506,14 @@ const Home = () => {
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
                     <div className="bg-white rounded-2xl p-8 max-w-2xl w-full mx-4 shadow-2xl">
                         <div className="flex justify-between items-center mb-6">
-                            <h2 className="text-xl font-bold text-slate-800">Paste Your Content</h2>
+                            <h2 className="text-xl font-bold text-slate-800">
+                                {pasteImage ? 'Image from Clipboard' : 'Paste Your Content'}
+                            </h2>
                             <button
                                 onClick={() => {
                                     setShowPasteModal(false);
                                     setPasteContent('');
+                                    setPasteImage(null);
                                 }}
                                 className="p-2 hover:bg-slate-100 rounded-lg"
                             >
@@ -452,27 +521,44 @@ const Home = () => {
                             </button>
                         </div>
 
-                        <p className="text-slate-600 mb-4">
-                            Paste the text content you want to summarize below:
-                        </p>
-
-                        <textarea
-                            value={pasteContent}
-                            onChange={(e) => setPasteContent(e.target.value)}
-                            placeholder="Paste your content here... (Ctrl+V / Cmd+V)"
-                            className="w-full h-64 p-4 border-2 border-slate-200 rounded-xl focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 outline-none resize-none font-mono text-sm"
-                            autoFocus
-                        />
+                        {pasteImage ? (
+                            <>
+                                <p className="text-slate-600 mb-4">
+                                    Image detected from clipboard. This will be processed for summarization.
+                                </p>
+                                <div className="border-2 border-slate-200 rounded-xl p-4 bg-slate-50 max-h-80 overflow-auto">
+                                    <img
+                                        src={pasteImage.base64}
+                                        alt="Pasted from clipboard"
+                                        className="max-w-full h-auto rounded-lg mx-auto"
+                                    />
+                                </div>
+                            </>
+                        ) : (
+                            <>
+                                <p className="text-slate-600 mb-4">
+                                    Paste the text content you want to summarize below:
+                                </p>
+                                <textarea
+                                    value={pasteContent}
+                                    onChange={(e) => setPasteContent(e.target.value)}
+                                    placeholder="Paste your content here... (Ctrl+V / Cmd+V)"
+                                    className="w-full h-64 p-4 border-2 border-slate-200 rounded-xl focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 outline-none resize-none font-mono text-sm"
+                                    autoFocus
+                                />
+                            </>
+                        )}
 
                         <div className="flex justify-between items-center mt-4">
                             <span className="text-sm text-slate-500">
-                                {pasteContent.length} characters
+                                {pasteImage ? 'Image ready' : `${pasteContent.length} characters`}
                             </span>
                             <div className="flex gap-3">
                                 <button
                                     onClick={() => {
                                         setShowPasteModal(false);
                                         setPasteContent('');
+                                        setPasteImage(null);
                                     }}
                                     className="px-6 py-2 border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors"
                                 >
@@ -480,7 +566,7 @@ const Home = () => {
                                 </button>
                                 <button
                                     onClick={handlePasteSubmit}
-                                    disabled={!pasteContent.trim()}
+                                    disabled={!pasteContent.trim() && !pasteImage}
                                     className="px-6 py-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     Continue
