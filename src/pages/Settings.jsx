@@ -14,6 +14,7 @@ const Settings = () => {
     const [outputLanguage, setOutputLanguage] = useState('zh');
     const [isSaving, setIsSaving] = useState(false);
     const [showPrompt, setShowPrompt] = useState(false);
+    const [message, setMessage] = useState('');
 
     useEffect(() => {
         const loadSettings = async () => {
