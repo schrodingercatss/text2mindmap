@@ -177,11 +177,53 @@ const isAuthenticated = async () => {
 const getCurrentUser = async () => {
   try {
     console.log('getCurrentUser - fetching...');
-    const { data: { user } } = await supabase.auth.getUser();
-    console.log('getCurrentUser - result:', user?.id || 'null');
-    return user;
+    const { data: { user }, error } = await supabase.auth.getUser();
+    if (user) {
+      console.log('getCurrentUser - result:', user?.id || 'null');
+      return user;
+    }
+    if (error) {
+      console.warn('getCurrentUser - initial fetch failed:', error.message);
+    }
+
+    const session = await refreshSessionIfNeeded();
+    if (!session) {
+      console.log('getCurrentUser - result: null');
+      return null;
+    }
+
+    const { data: { user: refreshedUser } } = await supabase.auth.getUser();
+    console.log('getCurrentUser - result:', refreshedUser?.id || 'null');
+    return refreshedUser;
   } catch (err) {
     console.error('getCurrentUser - error:', err);
+    return null;
+  }
+};
+
+const refreshSessionIfNeeded = async () => {
+  try {
+    const { data: { session }, error } = await supabase.auth.getSession();
+    const expiresAtMs = session?.expires_at ? session.expires_at * 1000 : null;
+    const isExpired = expiresAtMs !== null && expiresAtMs <= Date.now() + 30000;
+
+    if (session && !isExpired) {
+      return session;
+    }
+
+    if (error) {
+      console.warn('refreshSessionIfNeeded - getSession error:', error.message);
+    }
+
+    const { data, error: refreshError } = await supabase.auth.refreshSession();
+    if (refreshError) {
+      console.warn('refreshSessionIfNeeded - refresh failed:', refreshError.message);
+      return null;
+    }
+
+    return data.session ?? null;
+  } catch (err) {
+    console.error('refreshSessionIfNeeded - error:', err);
     return null;
   }
 };
@@ -402,61 +444,75 @@ export const getMindMaps = async (userId = null) => {
       return maps ? JSON.parse(maps) : [];
     }
 
-    // Check if we have a valid session first
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    console.log('getMindMaps - Session:', session ? 'valid' : 'null', sessionError?.message || '');
-
-    if (sessionError || !session) {
-      console.warn('No valid session, falling back to localStorage');
-      const maps = localStorage.getItem(STORAGE_KEYS.MIND_MAPS);
-      return maps ? JSON.parse(maps) : [];
-    }
-
-    // Use AbortController for proper timeout
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => {
-      console.log('getMindMaps - Aborting due to timeout');
-      controller.abort();
-    }, 10000);
-
-    try {
-      const { data, error } = await supabase
-        .from('mind_maps')
-        .select('*')
-        .eq('user_id', effectiveUserId)
-        .order('created_at', { ascending: false })
-        .abortSignal(controller.signal);
-
-      clearTimeout(timeoutId);
-      console.log('getMindMaps - Result:', { count: data?.length, error: error?.message });
-
-      if (error) {
-        console.error('Error fetching mind maps:', error);
-        return [];
-      }
-
-      return data.map(map => ({
-        id: map.id,
-        title: map.title,
-        originalFilename: map.original_filename,
-        data: map.data,
-        processSteps: map.process_steps,
-        paperNotes: map.paper_notes,
-        mode: map.mode,
-        modelName: map.model_name,
-        fileType: map.file_type,
-        iconColor: map.icon_color,
-        createdAt: map.created_at,
-      }));
-    } catch (queryError) {
-      clearTimeout(timeoutId);
-      if (queryError.name === 'AbortError') {
-        console.error('Query aborted due to timeout');
-      } else {
-        console.error('Query error:', queryError);
-      }
+    const session = await refreshSessionIfNeeded();
+    console.log('getMindMaps - Session:', session ? 'valid' : 'null');
+    if (!session) {
+      console.warn('No valid session for authenticated user, skipping local fallback');
       return [];
     }
+
+    const runQueryWithTimeout = async () => {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => {
+        console.log('getMindMaps - Aborting due to timeout');
+        controller.abort();
+      }, 10000);
+
+      try {
+        return await supabase
+          .from('mind_maps')
+          .select('*')
+          .eq('user_id', effectiveUserId)
+          .order('created_at', { ascending: false })
+          .abortSignal(controller.signal);
+      } catch (queryError) {
+        if (queryError.name === 'AbortError') {
+          console.error('Query aborted due to timeout');
+        } else {
+          console.error('Query error:', queryError);
+        }
+        return { data: null, error: queryError };
+      } finally {
+        clearTimeout(timeoutId);
+      }
+    };
+
+    const isAuthError = (error) => {
+      const status = Number(error?.status);
+      return status === 401 || status === 403;
+    };
+
+    let { data, error } = await runQueryWithTimeout();
+    if (error && isAuthError(error)) {
+      console.warn('Auth error fetching mind maps, attempting session refresh');
+      const refreshed = await supabase.auth.refreshSession();
+      if (!refreshed.error) {
+        const retry = await runQueryWithTimeout();
+        data = retry.data;
+        error = retry.error;
+      }
+    }
+
+    console.log('getMindMaps - Result:', { count: data?.length, error: error?.message });
+
+    if (error) {
+      console.error('Error fetching mind maps:', error);
+      return [];
+    }
+
+    return data.map(map => ({
+      id: map.id,
+      title: map.title,
+      originalFilename: map.original_filename,
+      data: map.data,
+      processSteps: map.process_steps,
+      paperNotes: map.paper_notes,
+      mode: map.mode,
+      modelName: map.model_name,
+      fileType: map.file_type,
+      iconColor: map.icon_color,
+      createdAt: map.created_at,
+    }));
   } catch (err) {
     console.error('Error in getMindMaps:', err);
     return [];
