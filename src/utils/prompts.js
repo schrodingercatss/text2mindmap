@@ -107,6 +107,13 @@ Focus on the following:
    - Block formulas should be wrapped in double dollar signs: $$ E = mc^2 $$
    - Fix any unclosed brackets or syntax errors in LaTeX.
 2. **Markdown Syntax**: Ensure all markdown syntax is valid.
+   - **Fix Fragmented Lists**: If a list is broken into multiple lines or blocks incorrectly, merge them into a proper list.
+   - **Code Blocks vs Inline**: Do NOT use triple backtick code blocks for single words or short phrases inside a sentence or list. Use inline code (single backtick) instead.
+     - BAD: 
+       * \`\`\`
+         django
+         \`\`\`
+     - GOOD: * \`django\`
    - Check for unclosed bold/italic markers.
    - Ensure proper spacing for lists and headers.
    - Fix any broken tables.
