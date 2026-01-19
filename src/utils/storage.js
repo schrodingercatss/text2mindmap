@@ -1,5 +1,6 @@
 import { DEFAULT_PAPER_READING_PROMPT } from './prompts';
 import { supabase } from '../lib/supabase';
+import { encryptData, decryptData } from './crypto';
 
 const STORAGE_KEYS = {
   API_SETTINGS: 'mindmap_api_settings',
@@ -240,7 +241,7 @@ export const loadApiSettings = async () => {
 
     // Map database fields to expected format
     const settings = {
-      apiKey: data.api_key || '',
+      apiKey: decryptData(data.api_key) || '',
       baseUrl: data.base_url || 'https://api.openai.com/v1',
       modelName: data.model_name || 'gemini-3-flash-preview',
       paperReadingModelName: data.paper_reading_model_name || 'gemini-2.5-pro-thinking',
@@ -279,7 +280,7 @@ export const saveApiSettings = async (settings) => {
     // Save to Supabase
     const dbData = {
       user_id: user.id,
-      api_key: settings.apiKey,
+      api_key: encryptData(settings.apiKey),
       base_url: settings.baseUrl,
       model_name: settings.modelName,
       paper_reading_model_name: settings.paperReadingModelName,
