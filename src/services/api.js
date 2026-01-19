@@ -166,8 +166,8 @@ export const generatePaperReading = async (text, fileType = 'pdf') => {
     }
 };
 
-// Helper to clean up markdown regex-based (FALLBACK ONLY)
-// This is used as a last resort when LLM repair fails or times out
+// Helper to clean up markdown regex-based
+// Converts code blocks that contain simple single-line content to inline code
 const cleanupMarkdown = (text) => {
     if (!text) return text;
 
@@ -176,24 +176,53 @@ const cleanupMarkdown = (text) => {
     // Normalize line endings to \n
     result = result.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 
-    // Fix: Convert single-line code blocks to inline code
-    // Pattern 1: Code blocks WITH newlines (``` \n content \n ```)
-    result = result.replace(/```[ \t]*[\w-]*[ \t]*\n\s*([^\n]+?)\s*\n\s*```/g, (match, content) => {
-        const trimmed = content.trim();
-        // Only convert if content looks like a single word/short phrase (not actual code)
-        if (trimmed.length < 100 && !trimmed.includes(';') && !trimmed.includes('{') && !trimmed.includes('(')) {
-            return `\`${trimmed}\``;
-        }
-        return match;
-    });
+    // AGGRESSIVE: Match ALL code blocks and intelligently decide if they should be inline
+    result = result.replace(/```([\s\S]*?)```/g, (match, content) => {
+        // Split content into lines and filter out empty ones
+        const lines = content.split('\n').map(l => l.trim()).filter(l => l);
 
-    // Pattern 2: Code blocks WITHOUT newlines (```content```) - inline style
-    result = result.replace(/```([^`\n]{1,80}?)```/g, (match, content) => {
-        const trimmed = content.trim();
-        // Only convert if content is short and doesn't look like code
-        if (trimmed && trimmed.length < 80 && !trimmed.includes(';') && !trimmed.includes('{') && !trimmed.includes('(')) {
-            return `\`${trimmed}\``;
+        // Handle different cases:
+        // Case 1: Empty code block
+        if (lines.length === 0) {
+            return match;
         }
+
+        // Case 2: Single line - this is the content itself (no language id)
+        // e.g., ```django``` or ```\ndjango\n```
+        if (lines.length === 1) {
+            const actualContent = lines[0];
+            // Check if it looks like simple text (not code)
+            if (actualContent.length < 80 &&
+                !actualContent.includes(';') &&
+                !actualContent.includes('{') &&
+                !actualContent.includes('(') &&
+                !actualContent.includes('=') &&
+                !actualContent.includes('import ') &&
+                !actualContent.includes('def ') &&
+                !actualContent.includes('class ') &&
+                !actualContent.includes('function ')) {
+                return `\`${actualContent}\``;
+            }
+        }
+
+        // Case 3: Two lines - first line might be language id, second is content
+        // e.g., ```python\ndjango\n```
+        if (lines.length === 2) {
+            const possibleLangId = lines[0];
+            const actualContent = lines[1];
+            // If first line looks like a language identifier (single word, short)
+            const isLangId = /^[\w-]+$/.test(possibleLangId) && possibleLangId.length < 20;
+
+            if (isLangId && actualContent.length < 80 &&
+                !actualContent.includes(';') &&
+                !actualContent.includes('{') &&
+                !actualContent.includes('(') &&
+                !actualContent.includes('=')) {
+                return `\`${actualContent}\``;
+            }
+        }
+
+        // If we get here, keep as code block
         return match;
     });
 
