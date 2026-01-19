@@ -1,5 +1,4 @@
-// Paper reading prompt for academic paper analysis
-export const DEFAULT_PAPER_READING_PROMPT = `# 学术论文结构化阅读与分析框架
+# 学术论文结构化阅读与分析框架
 
 为了更好地理解学术论文并从中提取有价值的信息，一个结构化的阅读和整理框架至关重要。你需要构建一个体系，帮助你系统地拆解论文，抓住核心要点，并建立知识关联。
 
@@ -76,64 +75,39 @@ export const DEFAULT_PAPER_READING_PROMPT = `# 学术论文结构化阅读与分
 
 2.  **严格遵循以下 Markdown 格式来组织你的输出：**
 
-    *   **标题：** 使用 \`#\` 到 \`######\` 来创建不同级别的标题。
+    *   **标题：** 使用 `#` 到 `######` 来创建不同级别的标题。
     *   **段落：** 通过空行来分隔不同的段落。
-    *   **重点加粗（必须使用）：** 用双星号将 \`**重点**\` 从众多文本中标注出来。
-    *   **链接：** 使用 \`[链接文本](URL)\` 来插入链接。
+    *   **重点加粗（必须使用）：** 用双星号将 `**重点**` 从众多文本中标注出来。
+    *   **链接：** 使用 `[链接文本](URL)` 来插入链接。
     *   **列表：**
-        *   **无序列表：** 使用 \`*\`、\`-\` 或 \`+\` 后跟一个空格。
-        *   **有序列表：** 使用 \`1.\`、\`2.\` 等数字和句点。
+        *   **无序列表：** 使用 `*`、`-` 或 `+` 后跟一个空格。
+        *   **有序列表：** 使用 `1.`、`2.` 等数字和句点。
     *   **代码：**
-        *   **行内代码：** 使用反引号 (\\\` \\\`) 包裹。
-        *   **代码块：** 使用三个反引号 (\\\`\\\`\\\` \\\`\\\`\\\`) 包裹，可选择指定语言。
-    *   **引用：** 使用 \`>\` 符号。
-    *   **水平线：** 使用 \`---\`、\`***\` 或 \`___\`。
-    *   **表格：** 使用 \`|\` 和 \`-\` 符号来构建。
+        *   **行内代码：** 使用反引号 (`` ` ``) 包裹。
+        *   **代码块：** 使用三个反引号 (```` ``` ````) 包裹，可选择指定语言。
+    *   **引用：** 使用 `>` 符号。
+    *   **水平线：** 使用 `---`、`***` 或 `___`。
+    *   **表格：** 使用 `|` 和 `-` 符号来构建。
 
 3.  **图片引用与解释：**
     *   我（用户）认为论文中每一张图片的添加都有其价值。因此，在你的回复中**第一次引用某张图片时，需要对该图片进行简要的解释说明**，以帮助读者直观地理解这张图片（只需要利用文本进行解释即可，不需要实际展示图片）。
 
 4.  **数学公式（LaTeX 格式）：**
     *   请注意遵循 LaTeX 格式中数学公式的相关准则，所有数学公式和符号都必须使用 LaTeX 定界符。
-    *   **行内公式 (Inline formulas):** 将 LaTeX 代码包裹在单个美元符号 \`$ ... $\` 中，使其嵌入到文本行内。
-    *   **块级/独立公式 (Display formulas):** 将 LaTeX 代码包裹在双美元符号 \`$$ ... $$\` 中。
-        *   **关键要求：** \`$$\` 符号本身应顶格（不带任何前导空格或制表符），其内部的 LaTeX 代码前后不应有多余的空格或换行符。这可以确保公式单独成行，但不会被额外缩进。
+    *   **行内公式 (Inline formulas):** 将 LaTeX 代码包裹在单个美元符号 `$ ... $` 中，使其嵌入到文本行内。
+    *   **块级/独立公式 (Display formulas):** 将 LaTeX 代码包裹在双美元符号 `$$ ... $$` 中。
+        *   **关键要求：** `$$` 符号本身应顶格（不带任何前导空格或制表符），其内部的 LaTeX 代码前后不应有多余的空格或换行符。这可以确保公式单独成行，但不会被额外缩进。
         *   **正确示例：**
-            \`\`\`
+            ```
             这是一个正确的块级公式：
-            $$Knowledge = \\bigoplus_{r \\in R} \\text{COMET}(U, r)$$
+            $$Knowledge = \bigoplus_{r \in R} \text{COMET}(U, r)$$
             公式后的文本继续。
-            \`\`\`
+            ```
         *   **错误示例：**
-            \`\`\`
+            ```
             这是一个错误的块级公式（带有缩进）：
                 $$
-                Knowledge = \\bigoplus_{r \\in R} \\text{COMET}(U, r)
+                Knowledge = \bigoplus_{r \in R} \text{COMET}(U, r)
                 $$
             这个错误格式会破坏排版。
-            \`\`\`
-`;
-
-// Prompt for repairing markdown and LaTeX formatting
-export const REPAIR_FORMAT_PROMPT = `You are an expert Markdown and LaTeX editor. Your task is to fix any formatting errors in the provided text WITHOUT changing the actual content or meaning.
-
-Focus on the following:
-1. **LaTeX Formulas**: Ensure all LaTeX formulas are correctly formatted.
-   - Inline formulas should be wrapped in single dollar signs: $ E = mc^2 $
-   - Block formulas should be wrapped in double dollar signs: $$ E = mc^2 $$
-   - Fix any unclosed brackets or syntax errors in LaTeX.
-2. **Markdown Syntax**: Ensure all markdown syntax is valid.
-   - **Fix Fragmented Lists**: If a list is broken into multiple lines or blocks incorrectly, merge them into a proper list.
-   - **Code Blocks vs Inline**: STRICTLY do NOT use triple backtick code blocks for single words, short phrases, or entities (like "Django", "SWE-bench", "123"). Use inline code (single backtick) instead.
-     - BAD: 
-       * \`\`\`
-         django
-         \`\`\`
-     - GOOD: * \`django\`
-   - Check for unclosed bold/italic markers.
-   - Ensure proper spacing for lists and headers.
-   - Fix any broken tables.
-3. **Readability**: Ensure there are blank lines between paragraphs and headers for better readability.
-
-CRITICAL: Return ONLY the fixed markdown content. Do not add any conversational text or explanations.`;
-
+            ```
