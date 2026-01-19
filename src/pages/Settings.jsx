@@ -8,6 +8,7 @@ const Settings = () => {
     const [apiKey, setApiKey] = useState('');
     const [baseUrl, setBaseUrl] = useState('');
     const [modelName, setModelName] = useState('');
+    const [paperReadingModelName, setPaperReadingModelName] = useState('');
     const [systemPrompt, setSystemPrompt] = useState('');
     const [iconColorPreference, setIconColorPreference] = useState('random');
     const [outputLanguage, setOutputLanguage] = useState('zh');
@@ -18,6 +19,7 @@ const Settings = () => {
         setApiKey(settings.apiKey);
         setBaseUrl(settings.baseUrl);
         setModelName(settings.modelName);
+        setPaperReadingModelName(settings.paperReadingModelName || 'gemini-2.5-pro-thinking');
         setSystemPrompt(settings.systemPrompt || '');
         setIconColorPreference(settings.iconColorPreference || 'random');
         setOutputLanguage(settings.outputLanguage || 'zh');
@@ -36,7 +38,7 @@ const Settings = () => {
             return;
         }
 
-        saveApiSettings({ apiKey, baseUrl, modelName, systemPrompt, iconColorPreference, outputLanguage });
+        saveApiSettings({ apiKey, baseUrl, modelName, paperReadingModelName, systemPrompt, iconColorPreference, outputLanguage });
         setMessage('Settings saved successfully!');
         setTimeout(() => setMessage(''), 3000);
     };
@@ -97,15 +99,27 @@ const Settings = () => {
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-semibold text-slate-700 mb-2">Model Name</label>
+                                    <label className="block text-sm font-semibold text-slate-700 mb-2">Mind Map Model</label>
                                     <input
                                         type="text"
                                         value={modelName}
                                         onChange={(e) => setModelName(e.target.value)}
-                                        placeholder="gpt-4o, gemini-2.0-flash-exp, etc."
+                                        placeholder="gpt-4o, gemini-3-flash-preview, etc."
                                         className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all bg-slate-50 focus:bg-white"
                                     />
-                                    <p className="mt-2 text-xs text-slate-400">Specify the model ID (e.g., gemini-3-flash-preview).</p>
+                                    <p className="mt-2 text-xs text-slate-400">Model for generating mind maps.</p>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-semibold text-slate-700 mb-2">Paper Reading Model</label>
+                                    <input
+                                        type="text"
+                                        value={paperReadingModelName}
+                                        onChange={(e) => setPaperReadingModelName(e.target.value)}
+                                        placeholder="gemini-2.5-pro-thinking, etc."
+                                        className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-100 outline-none transition-all bg-slate-50 focus:bg-white"
+                                    />
+                                    <p className="mt-2 text-xs text-slate-400">Model for generating paper reading notes.</p>
                                 </div>
 
                                 <div>
