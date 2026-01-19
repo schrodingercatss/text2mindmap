@@ -19,9 +19,16 @@ const Home = () => {
     const [showPasteModal, setShowPasteModal] = useState(false);
     const [pasteContent, setPasteContent] = useState('');
     const [pasteImage, setPasteImage] = useState(null); // { base64: string, type: string }
+    const [mapsLoading, setMapsLoading] = useState(true);
 
     useEffect(() => {
-        setMaps(getMindMaps());
+        const loadMaps = async () => {
+            setMapsLoading(true);
+            const loadedMaps = await getMindMaps();
+            setMaps(loadedMaps);
+            setMapsLoading(false);
+        };
+        loadMaps();
     }, []);
 
     const handleFileSelect = (event) => {
@@ -225,9 +232,10 @@ const Home = () => {
                     fileType: fileType
                 };
 
-                const savedMap = saveMindMap(newMap);
+                const savedMap = await saveMindMap(newMap);
                 setProgress(100);
-                setMaps(getMindMaps());
+                const updatedMaps = await getMindMaps();
+                setMaps(updatedMaps);
                 navigate(`/map/${savedMap.id}`);
             } catch (err) {
                 setError(err.message);
@@ -257,11 +265,12 @@ const Home = () => {
         }
     };
 
-    const handleDelete = (e, id) => {
+    const handleDelete = async (e, id) => {
         e.stopPropagation();
         if (window.confirm('Are you sure you want to delete this?')) {
-            deleteMindMap(id);
-            setMaps(getMindMaps());
+            await deleteMindMap(id);
+            const updatedMaps = await getMindMaps();
+            setMaps(updatedMaps);
         }
     };
 

@@ -15,17 +15,20 @@ const Settings = () => {
     const [message, setMessage] = useState('');
 
     useEffect(() => {
-        const settings = getApiSettings();
-        setApiKey(settings.apiKey);
-        setBaseUrl(settings.baseUrl);
-        setModelName(settings.modelName);
-        setPaperReadingModelName(settings.paperReadingModelName || 'gemini-2.5-pro-thinking');
-        setSystemPrompt(settings.systemPrompt || '');
-        setIconColorPreference(settings.iconColorPreference || 'random');
-        setOutputLanguage(settings.outputLanguage || 'zh');
+        const loadSettings = async () => {
+            const settings = await getApiSettings();
+            setApiKey(settings.apiKey);
+            setBaseUrl(settings.baseUrl);
+            setModelName(settings.modelName);
+            setPaperReadingModelName(settings.paperReadingModelName || 'gemini-2.5-pro-thinking');
+            setSystemPrompt(settings.systemPrompt || '');
+            setIconColorPreference(settings.iconColorPreference || 'random');
+            setOutputLanguage(settings.outputLanguage || 'zh');
+        };
+        loadSettings();
     }, []);
 
-    const handleSave = (e) => {
+    const handleSave = async (e) => {
         e.preventDefault();
 
         if (!baseUrl.trim()) {
@@ -38,7 +41,7 @@ const Settings = () => {
             return;
         }
 
-        saveApiSettings({ apiKey, baseUrl, modelName, paperReadingModelName, systemPrompt, iconColorPreference, outputLanguage });
+        await saveApiSettings({ apiKey, baseUrl, modelName, paperReadingModelName, systemPrompt, iconColorPreference, outputLanguage });
         setMessage('Settings saved successfully!');
         setTimeout(() => setMessage(''), 3000);
     };

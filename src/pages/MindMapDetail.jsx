@@ -17,25 +17,28 @@ const MindMapDetail = () => {
     const [saveMessage, setSaveMessage] = useState('');
 
     useEffect(() => {
-        const map = getMindMapById(id);
-        if (map) {
-            setMapData(map);
-            setEditData(map.data || []);
-            setEditTitle(map.title);
-            setEditProcessSteps(map.processSteps || []);
+        const loadMap = async () => {
+            const map = await getMindMapById(id);
+            if (map) {
+                setMapData(map);
+                setEditData(map.data || []);
+                setEditTitle(map.title);
+                setEditProcessSteps(map.processSteps || []);
 
-            // Set default tab based on available content
-            if (map.paperNotes && !map.data) {
-                setActiveTab('notes');
-            } else if (map.data && !map.paperNotes) {
-                setActiveTab('mindmap');
+                // Set default tab based on available content
+                if (map.paperNotes && !map.data) {
+                    setActiveTab('notes');
+                } else if (map.data && !map.paperNotes) {
+                    setActiveTab('mindmap');
+                } else {
+                    // Both available, default to notes
+                    setActiveTab('notes');
+                }
             } else {
-                // Both available, default to notes
-                setActiveTab('notes');
+                navigate('/');
             }
-        } else {
-            navigate('/');
-        }
+        };
+        loadMap();
     }, [id, navigate]);
 
     const handleStartEdit = () => {
@@ -45,8 +48,8 @@ const MindMapDetail = () => {
         setIsEditing(true);
     };
 
-    const handleSave = () => {
-        const updated = updateMindMap(id, {
+    const handleSave = async () => {
+        const updated = await updateMindMap(id, {
             title: editTitle.trim() || mapData.title,
             data: editData,
             processSteps: editProcessSteps
@@ -137,8 +140,8 @@ const MindMapDetail = () => {
                                     setIsEditing(false);
                                 }}
                                 className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-all ${activeTab === 'notes'
-                                        ? 'bg-purple-500 text-white shadow-md'
-                                        : 'text-slate-600 hover:bg-slate-50'
+                                    ? 'bg-purple-500 text-white shadow-md'
+                                    : 'text-slate-600 hover:bg-slate-50'
                                     }`}
                             >
                                 <BookOpen size={18} />
@@ -147,8 +150,8 @@ const MindMapDetail = () => {
                             <button
                                 onClick={() => setActiveTab('mindmap')}
                                 className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-all ${activeTab === 'mindmap'
-                                        ? 'bg-blue-500 text-white shadow-md'
-                                        : 'text-slate-600 hover:bg-slate-50'
+                                    ? 'bg-blue-500 text-white shadow-md'
+                                    : 'text-slate-600 hover:bg-slate-50'
                                     }`}
                             >
                                 <GitBranch size={18} />

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { loadApiSettings, clearSettingsCache } from '../utils/storage';
 
 const AuthContext = createContext({});
 
@@ -22,6 +23,10 @@ export const AuthProvider = ({ children }) => {
             try {
                 const { data: { session } } = await supabase.auth.getSession();
                 setUser(session?.user ?? null);
+                // Load settings if user is logged in
+                if (session?.user) {
+                    await loadApiSettings();
+                }
             } catch (err) {
                 console.error('Error checking session:', err);
             } finally {
@@ -32,9 +37,16 @@ export const AuthProvider = ({ children }) => {
         checkSession();
 
         // Listen for auth changes
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
             setUser(session?.user ?? null);
             setLoading(false);
+            // Load settings when user logs in
+            if (session?.user) {
+                await loadApiSettings();
+            } else {
+                // Clear cache when user logs out
+                clearSettingsCache();
+            }
         });
 
         return () => subscription.unsubscribe();
