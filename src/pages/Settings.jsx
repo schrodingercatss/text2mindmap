@@ -2,9 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { saveApiSettings, getApiSettings } from '../utils/storage';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Save, Settings as SettingsIcon } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 
 const Settings = () => {
     const navigate = useNavigate();
+    const { user, session } = useAuth();
     const [apiKey, setApiKey] = useState('');
     const [baseUrl, setBaseUrl] = useState('');
     const [modelName, setModelName] = useState('');
@@ -48,7 +50,11 @@ const Settings = () => {
         }
 
         try {
-            await saveApiSettings({ apiKey, baseUrl, modelName, paperReadingModelName, systemPrompt, iconColorPreference, outputLanguage });
+            await saveApiSettings(
+                { apiKey, baseUrl, modelName, paperReadingModelName, systemPrompt, iconColorPreference, outputLanguage },
+                user?.id,
+                session?.access_token
+            );
             setMessage('Settings saved successfully!');
             setTimeout(() => setMessage(''), 3000);
         } catch (error) {

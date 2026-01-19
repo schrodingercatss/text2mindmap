@@ -39,7 +39,7 @@ export const AuthProvider = ({ children }) => {
                 setUser(effectiveSession?.user ?? null);
 
                 if (effectiveSession?.user) {
-                    await loadApiSettings();
+                    await loadApiSettings(effectiveSession.user.id, effectiveSession.access_token);
                 }
             } catch (err) {
                 console.error('Error checking session:', err);
@@ -57,7 +57,7 @@ export const AuthProvider = ({ children }) => {
             setLoading(false);
             // Load settings when user logs in
             if (session?.user) {
-                await loadApiSettings();
+                await loadApiSettings(session.user.id, session.access_token);
             } else {
                 // Clear cache when user logs out
                 clearSettingsCache();

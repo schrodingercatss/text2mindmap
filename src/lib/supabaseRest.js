@@ -3,21 +3,37 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 const getBaseUrl = () => (supabaseUrl || '').replace(/\/$/, '');
 
-export const supabaseRestFetch = async (path, { accessToken, method = 'GET', body, headers } = {}) => {
+export const supabaseRestFetch = async (path, { accessToken, method = 'GET', body, headers, timeoutMs = 15000 } = {}) => {
   if (!supabaseUrl || !supabaseAnonKey) {
     throw new Error('Supabase credentials not found. Please check your .env.local file.');
   }
 
-  const response = await fetch(`${getBaseUrl()}${path}`, {
-    method,
-    headers: {
-      apikey: supabaseAnonKey,
-      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-      ...(body ? { 'Content-Type': 'application/json' } : {}),
-      ...headers,
-    },
-    ...(body ? { body: JSON.stringify(body) } : {}),
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  let response;
+  try {
+    response = await fetch(`${getBaseUrl()}${path}`, {
+      method,
+      headers: {
+        apikey: supabaseAnonKey,
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        ...(body ? { 'Content-Type': 'application/json' } : {}),
+        ...(headers || {}),
+      },
+      ...(body ? { body: JSON.stringify(body) } : {}),
+      signal: controller.signal,
+    });
+  } catch (err) {
+    if (err?.name === 'AbortError') {
+      const error = new Error(`Supabase REST timeout after ${timeoutMs}ms`);
+      error.status = 0;
+      throw error;
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 
   const contentType = response.headers.get('content-type') || '';
   const isJson = contentType.includes('application/json');
@@ -37,4 +53,3 @@ export const supabaseRestFetch = async (path, { accessToken, method = 'GET', bod
 
   return payload;
 };
-

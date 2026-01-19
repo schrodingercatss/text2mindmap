@@ -256,10 +256,10 @@ export const getApiSettings = () => {
 };
 
 // Async loader - call this on app init to populate cache from Supabase
-export const loadApiSettings = async () => {
+export const loadApiSettings = async (userId = null, accessToken = null) => {
   try {
-    const user = await getCurrentUser();
-    if (!user) {
+    const effectiveUserId = userId || (await getCurrentUser())?.id;
+    if (!effectiveUserId) {
       // Not logged in, use localStorage or defaults
       const local = localStorage.getItem(STORAGE_KEYS.API_SETTINGS);
       if (local) {
@@ -269,11 +269,40 @@ export const loadApiSettings = async () => {
       return getDefaultSettings();
     }
 
-    // Fetch from Supabase
+    // Fetch from Supabase (prefer REST with explicit access token)
+    if (accessToken) {
+      const params = new URLSearchParams({
+        select: '*',
+        user_id: `eq.${effectiveUserId}`,
+        limit: '1',
+      });
+      const rows = await supabaseRestFetch(`/rest/v1/user_settings?${params.toString()}`, { accessToken });
+      const data = Array.isArray(rows) ? rows[0] : rows;
+      if (!data) {
+        return getDefaultSettings();
+      }
+
+      const settings = {
+        apiKey: decryptData(data.api_key) || '',
+        baseUrl: data.base_url || 'https://api.openai.com/v1',
+        modelName: data.model_name || 'gemini-3-flash-preview',
+        paperReadingModelName: data.paper_reading_model_name || 'gemini-2.5-pro-thinking',
+        systemPrompt: data.system_prompt || getDefaultSettings().systemPrompt,
+        pdfSystemPrompt: data.pdf_system_prompt || getDefaultSettings().pdfSystemPrompt,
+        paperReadingPrompt: data.paper_reading_prompt || DEFAULT_PAPER_READING_PROMPT,
+        outputLanguage: data.output_language || 'zh',
+        iconColorPreference: data.icon_color_preference || 'random',
+      };
+
+      settingsCache = settings;
+      localStorage.setItem(STORAGE_KEYS.SETTINGS_CACHE, JSON.stringify(settings));
+      return settings;
+    }
+
     const { data, error } = await supabase
       .from('user_settings')
       .select('*')
-      .eq('user_id', user.id)
+      .eq('user_id', effectiveUserId)
       .single();
 
     if (error && error.code !== 'PGRST116') {
@@ -310,14 +339,14 @@ export const loadApiSettings = async () => {
 };
 
 // Save settings (to Supabase if logged in, otherwise localStorage)
-export const saveApiSettings = async (settings) => {
+export const saveApiSettings = async (settings, userId = null, accessToken = null) => {
   // Always update cache
   settingsCache = settings;
   localStorage.setItem(STORAGE_KEYS.SETTINGS_CACHE, JSON.stringify(settings));
 
   try {
-    const user = await getCurrentUser();
-    if (!user) {
+    const effectiveUserId = userId || (await getCurrentUser())?.id;
+    if (!effectiveUserId) {
       // Not logged in, save to localStorage only
       localStorage.setItem(STORAGE_KEYS.API_SETTINGS, JSON.stringify(settings));
       return settings;
@@ -325,7 +354,7 @@ export const saveApiSettings = async (settings) => {
 
     // Save to Supabase
     const dbData = {
-      user_id: user.id,
+      user_id: effectiveUserId,
       api_key: encryptData(settings.apiKey),
       base_url: settings.baseUrl,
       model_name: settings.modelName,
@@ -336,6 +365,16 @@ export const saveApiSettings = async (settings) => {
       output_language: settings.outputLanguage,
       icon_color_preference: settings.iconColorPreference,
     };
+
+    if (accessToken) {
+      await supabaseRestFetch('/rest/v1/user_settings?on_conflict=user_id', {
+        accessToken,
+        method: 'POST',
+        body: dbData,
+        headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
+      });
+      return settings;
+    }
 
     const { error } = await supabase
       .from('user_settings')
