@@ -386,6 +386,7 @@ export const saveMindMap = async (mindMap) => {
 export const getMindMaps = async () => {
   try {
     const user = await getCurrentUser();
+    console.log('getMindMaps - Current user:', user?.id);
     if (!user) {
       // Not logged in, use localStorage
       const maps = localStorage.getItem(STORAGE_KEYS.MIND_MAPS);
@@ -397,6 +398,8 @@ export const getMindMaps = async () => {
       .select('*')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false });
+
+    console.log('getMindMaps - Supabase response:', { data, error });
 
     if (error) {
       console.error('Error fetching mind maps:', error);
