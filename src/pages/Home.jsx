@@ -29,7 +29,7 @@ const Home = () => {
         const loadMaps = async () => {
             setMapsLoading(true);
             console.log('Home - Loading maps, user:', user?.id);
-            const loadedMaps = await getMindMaps();
+            const loadedMaps = await getMindMaps(user?.id);
             console.log('Home - Loaded maps:', loadedMaps.length);
             setMaps(loadedMaps);
             setMapsLoading(false);
