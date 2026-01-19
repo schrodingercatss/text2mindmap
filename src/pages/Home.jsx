@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Settings as SettingsIcon, FileText, Trash2, Loader, Search, Cpu, BookOpen, GitBranch, X, ClipboardPaste, Image } from 'lucide-react';
+import { Settings as SettingsIcon, FileText, Trash2, Loader, Search, Cpu, BookOpen, GitBranch, X, ClipboardPaste, Image, LogOut } from 'lucide-react';
 import { saveMindMap, getMindMaps, deleteMindMap, getApiSettings } from '../utils/storage';
 import { generateMindMapFromText, generatePaperReading, repairPaperNotes } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 
 const Home = () => {
     const navigate = useNavigate();
+    const { user, signOut } = useAuth();
     const [maps, setMaps] = useState([]);
     const [loading, setLoading] = useState(false);
     const [loadingMessage, setLoadingMessage] = useState('');
@@ -284,12 +286,27 @@ const Home = () => {
                         <h1 className="text-3xl font-bold text-slate-900 tracking-tight">text2mindmap</h1>
                         <p className="text-slate-500 mt-1">Generate mind maps and paper notes from documents</p>
                     </div>
-                    <button
-                        onClick={() => navigate('/settings')}
-                        className="p-3 bg-white rounded-xl shadow-sm border border-slate-200 text-slate-500 hover:text-blue-600 hover:border-blue-200 transition-all"
-                    >
-                        <SettingsIcon size={24} />
-                    </button>
+                    <div className="flex items-center gap-3">
+                        {user && (
+                            <span className="text-sm text-slate-500 hidden sm:block">
+                                {user.email}
+                            </span>
+                        )}
+                        <button
+                            onClick={() => navigate('/settings')}
+                            className="p-3 bg-white rounded-xl shadow-sm border border-slate-200 text-slate-500 hover:text-blue-600 hover:border-blue-200 transition-all"
+                            title="Settings"
+                        >
+                            <SettingsIcon size={24} />
+                        </button>
+                        <button
+                            onClick={signOut}
+                            className="p-3 bg-white rounded-xl shadow-sm border border-slate-200 text-slate-500 hover:text-red-600 hover:border-red-200 transition-all"
+                            title="Sign Out"
+                        >
+                            <LogOut size={24} />
+                        </button>
+                    </div>
                 </div>
 
                 {error && (
