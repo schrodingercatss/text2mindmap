@@ -246,7 +246,8 @@ export const repairPaperNotes = async (content) => {
             .replace(/^```\n/, '')
             .replace(/\n```$/, '');
 
-        return finalContent;
+        // Always apply regex cleanup as final pass (belt and suspenders)
+        return cleanupMarkdown(finalContent);
 
     } catch (error) {
         // LLM timed out or errored, use regex fallback on ORIGINAL content
