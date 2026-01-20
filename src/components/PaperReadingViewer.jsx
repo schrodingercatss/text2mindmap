@@ -170,7 +170,7 @@ const PaperReadingViewer = ({ title, content }) => {
         <div className="min-h-screen bg-slate-50/50 p-8">
             <div className="max-w-5xl mx-auto">
                 {/* Toolbar */}
-                <div className="flex justify-end mb-8 sticky top-4 z-20">
+                <div className="fixed top-8 right-8 z-50">
                     <button
                         onClick={handleExport}
                         className="flex items-center gap-2 bg-white/80 backdrop-blur-sm hover:bg-white text-slate-700 px-5 py-2.5 rounded-full font-medium shadow-sm hover:shadow-md border border-slate-200 transition-all transform hover:-translate-y-0.5"
