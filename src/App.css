@@ -22,9 +22,7 @@
 
 body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  background-color: #ffffff;
   margin: 0;
-  padding: 20px;
   color: #333;
 }
 
@@ -60,7 +58,8 @@ body {
 .mind-map-container {
   position: relative;
   padding-left: 40px;
-  background: white; /* Ensure white background for export */
+  background: white;
+  /* Ensure white background for export */
   padding: 40px;
 }
 
@@ -99,7 +98,8 @@ body {
    The sub-items branch off from the main line. */
 
 .topic-badge {
-  margin-left: 0px; /* Aligned with the start */
+  margin-left: 0px;
+  /* Aligned with the start */
 }
 
 .sub-nodes-container {
@@ -111,25 +111,32 @@ body {
 
 .sub-node-wrapper {
   position: relative;
-  padding-left: 60px; /* Space for the curve */
+  padding-left: 60px;
+  /* Space for the curve */
 }
 
 /* The curved connector */
 .connector {
   position: absolute;
-  left: 20px; /* Start from the main line (approx) */
-  top: -20px; /* Start from above (previous sibling or main start) */
-  bottom: 50%; /* Go down to the middle of this node */
+  left: 20px;
+  /* Start from the main line (approx) */
+  top: -20px;
+  /* Start from above (previous sibling or main start) */
+  bottom: 50%;
+  /* Go down to the middle of this node */
   width: 30px;
-  border-left: 2px solid; /* Color set dynamically */
-  border-bottom: 2px solid; /* Color set dynamically */
+  border-left: 2px solid;
+  /* Color set dynamically */
+  border-bottom: 2px solid;
+  /* Color set dynamically */
   border-bottom-left-radius: 15px;
   pointer-events: none;
 }
 
 /* Adjust connector for the first item to connect from the topic badge area */
 .sub-node-wrapper:first-child .connector {
-  top: -35px; /* Connect from higher up */
+  top: -35px;
+  /* Connect from higher up */
   height: calc(50% + 35px);
   bottom: auto;
 }
@@ -148,10 +155,13 @@ body {
 .section-line {
   position: absolute;
   left: 20px;
-  top: 40px; /* Start below the badge */
-  bottom: -20px; /* Extend to next section */
+  top: 40px;
+  /* Start below the badge */
+  bottom: -20px;
+  /* Extend to next section */
   width: 2px;
-  background-color: #e0e0e0; /* Default */
+  background-color: #e0e0e0;
+  /* Default */
 }
 
 .sub-node-content {
@@ -160,7 +170,7 @@ body {
   border-radius: 8px;
   font-size: 16px;
   line-height: 1.6;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .sub-node-title {
@@ -229,7 +239,8 @@ body {
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  background-color: #87CEFA; /* Light blue */
+  background-color: #87CEFA;
+  /* Light blue */
   margin: 0 auto 15px;
   border: 2px solid white;
   box-shadow: 0 0 0 2px #87CEFA;
@@ -248,30 +259,90 @@ body {
 }
 
 /* Specific Theme Classes */
-.theme-orange .topic-badge { background-color: var(--color-orange-bg); color: var(--color-orange-text); }
-.theme-orange .section-line { background-color: var(--color-orange-line); }
-.theme-orange .connector { border-color: var(--color-orange-line); }
-.theme-orange .sub-node-content { background-color: var(--color-orange-bg); }
+.theme-orange .topic-badge {
+  background-color: var(--color-orange-bg);
+  color: var(--color-orange-text);
+}
 
-.theme-green .topic-badge { background-color: var(--color-green-bg); color: var(--color-green-text); }
-.theme-green .section-line { background-color: var(--color-green-line); }
-.theme-green .connector { border-color: var(--color-green-line); }
-.theme-green .sub-node-content { background-color: var(--color-green-bg); }
+.theme-orange .section-line {
+  background-color: var(--color-orange-line);
+}
 
-.theme-pink .topic-badge { background-color: var(--color-pink-bg); color: var(--color-pink-text); }
-.theme-pink .section-line { background-color: var(--color-pink-line); }
-.theme-pink .connector { border-color: var(--color-pink-line); }
-.theme-pink .sub-node-content { background-color: var(--color-pink-bg); }
+.theme-orange .connector {
+  border-color: var(--color-orange-line);
+}
 
-.theme-cyan .topic-badge { background-color: var(--color-cyan-bg); color: var(--color-cyan-text); }
-.theme-cyan .section-line { background-color: var(--color-cyan-line); }
-.theme-cyan .connector { border-color: var(--color-cyan-line); }
-.theme-cyan .sub-node-content { background-color: var(--color-cyan-bg); }
+.theme-orange .sub-node-content {
+  background-color: var(--color-orange-bg);
+}
 
-.theme-blue .topic-badge { background-color: var(--color-blue-bg); color: var(--color-blue-text); }
-.theme-blue .section-line { background-color: var(--color-blue-line); }
-.theme-blue .connector { border-color: var(--color-blue-line); }
-.theme-blue .sub-node-content { background-color: var(--color-blue-bg); }
+.theme-green .topic-badge {
+  background-color: var(--color-green-bg);
+  color: var(--color-green-text);
+}
+
+.theme-green .section-line {
+  background-color: var(--color-green-line);
+}
+
+.theme-green .connector {
+  border-color: var(--color-green-line);
+}
+
+.theme-green .sub-node-content {
+  background-color: var(--color-green-bg);
+}
+
+.theme-pink .topic-badge {
+  background-color: var(--color-pink-bg);
+  color: var(--color-pink-text);
+}
+
+.theme-pink .section-line {
+  background-color: var(--color-pink-line);
+}
+
+.theme-pink .connector {
+  border-color: var(--color-pink-line);
+}
+
+.theme-pink .sub-node-content {
+  background-color: var(--color-pink-bg);
+}
+
+.theme-cyan .topic-badge {
+  background-color: var(--color-cyan-bg);
+  color: var(--color-cyan-text);
+}
+
+.theme-cyan .section-line {
+  background-color: var(--color-cyan-line);
+}
+
+.theme-cyan .connector {
+  border-color: var(--color-cyan-line);
+}
+
+.theme-cyan .sub-node-content {
+  background-color: var(--color-cyan-bg);
+}
+
+.theme-blue .topic-badge {
+  background-color: var(--color-blue-bg);
+  color: var(--color-blue-text);
+}
+
+.theme-blue .section-line {
+  background-color: var(--color-blue-line);
+}
+
+.theme-blue .connector {
+  border-color: var(--color-blue-line);
+}
+
+.theme-blue .sub-node-content {
+  background-color: var(--color-blue-bg);
+}
 
 /* Card inside a node (for the dataset comparison) */
 .inner-card {
